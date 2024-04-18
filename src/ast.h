@@ -8,6 +8,7 @@
 #include <fstream>
 #include <memory>
 #include <iostream>
+#include <cstdlib>
 
 // 所有 AST 的基类
 class BaseAST {
@@ -196,8 +197,8 @@ public:
     LOrExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
 
     void generateIR(std::ostream &os){
-        std::string temp1 = "%l0" ;
-        std::string temp2 = "%r00" ;
+        std::string temp1 = "%" + std::to_string(rand()) ;
+        std::string temp2 = "%" + std::to_string(rand()) ;
         if(left->isNum && right->isNum){
             os << "\t" << temp1 << " = ne 0," << left->num << "\n";
             os << "\t" << temp2 << " = ne 0," << right->num << "\n";
@@ -237,8 +238,8 @@ public:
     LAndExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
 
     void generateIR(std::ostream &os){
-        std::string temp1 = "%l000" ;
-        std::string temp2 = "%r0000";
+        std::string temp1 = "%" + std::to_string(rand());
+        std::string temp2 = "%" + std::to_string(rand());
         if(left->isNum && right->isNum){
             os << "\t" << temp1 << " = ne 0," << left->num << "\n";
             os << "\t" << temp2 << " = ne 0," << right->num << "\n";

@@ -196,8 +196,8 @@ public:
     LOrExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
 
     void generateIR(std::ostream &os){
-        std::string temp1 = "%l" + std::to_string(ExpBaseAST::expNum);
-        std::string temp2 = "%r" + std::to_string(ExpBaseAST::expNum);
+        std::string temp1 = "%l0" + std::to_string(ExpBaseAST::expNum);
+        std::string temp2 = "%r00" + std::to_string(ExpBaseAST::expNum);
         if(left->isNum && right->isNum){
             os << "\t" << temp1 << " = eq 0," << left->num << "\n";
             os << "\t" << temp2 << " = eq 0," << right->num << "\n";
@@ -237,8 +237,8 @@ public:
     LAndExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
 
     void generateIR(std::ostream &os){
-        std::string temp1 = "%l" + std::to_string(ExpBaseAST::expNum);
-        std::string temp2 = "%r" + std::to_string(ExpBaseAST::expNum);
+        std::string temp1 = "%l000" + std::to_string(ExpBaseAST::expNum);
+        std::string temp2 = "%r0000" + std::to_string(ExpBaseAST::expNum);
         if(left->isNum && right->isNum){
             os << "\t" << temp1 << " = ne 0," << left->num << "\n";
             os << "\t" << temp2 << " = ne 0," << right->num << "\n";

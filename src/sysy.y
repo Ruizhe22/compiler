@@ -56,8 +56,7 @@ CompUnit
 
 FuncDef
   : FuncType IDENT '(' ')' Block {
-    auto ast = new FuncDefAST($1,$2,$5);
-    $$ = ast;
+    $$ = new FuncDefAST($1,$2,$5);
   }
   ;
 
@@ -71,6 +70,7 @@ FuncType
 Block
   : '{' Stmt '}' {
     auto block = new BlockAST($2);
+    block->assignBlockName("entry");
     $$ = block;
   }
   ;

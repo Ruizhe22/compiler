@@ -7,11 +7,12 @@
 
 #include <fstream>
 #include <memory>
+#include <iostream>
 
 // 所有 AST 的基类
 class BaseAST {
 public:
-    virtual void generalIR(std::ostream &os) = 0;
+    virtual void generateIR(std::ostream &os) = 0;
     virtual ~BaseAST() = default;
 };
 
@@ -19,11 +20,14 @@ public:
 class CompUnitAST : public BaseAST {
 public:
     CompUnitAST(BaseAST *f):func_def(f){}
-    std::unique_ptr<BaseAST> func_def;
 
-    void generalIR(std::ostream &os){
-        func_def->generalIR(os);
+
+    void generateIR(std::ostream &os){
+        func_def->generateIR(os);
     }
+    
+private:
+    std::unique_ptr<BaseAST> func_def;
 
 };
 
@@ -31,18 +35,20 @@ public:
 class FuncDefAST : public BaseAST {
 public:
     FuncDefAST(BaseAST *ft, std::string *s, BaseAST *b):
-        func_type(ft), ident(*s), block(b){}
+        func_type(ft), funcName(*s), block(b){}
 
-    void generalIR(std::ostream &os){
-        os << "fun @" << ident << "()";
-        func_type->generalIR(os);
+    void generateIR(std::ostream &os){
+        os << "fun @" << funcName << "()";
+        func_type->generateIR(os);
         os << " {\n";
-        block->generalIR(os);
+        block->generateIR(os);
         os << "}";
     }
 
+private:
+    
     std::unique_ptr<BaseAST> func_type;
-    std::string ident;
+    std::string funcName;
     std::unique_ptr<BaseAST> block;
 };
 
@@ -50,10 +56,10 @@ class FuncTypeAST: public BaseAST {
 public:
     FuncTypeAST(const std::string &t):type(t){}
 
-    void generalIR(std::ostream &os){
+    void generateIR(std::ostream &os){
         os << ":" << type;
     }
-
+private:
     std::string type;
 };
 
@@ -61,23 +67,31 @@ class BlockAST: public BaseAST {
 public:
     BlockAST(BaseAST *ast):stmt(ast){}
 
-    void generalIR(std::ostream &os){
-        os << "%entry:\n";
-        stmt->generalIR(os);
+    void generateIR(std::ostream &os){
+        os << "%"<< blockName <<":\n";
+        stmt->generateIR(os);
     }
 
+    void assignBlockName(std::string name){
+        blockName = name;
+    }
+
+private:
     std::unique_ptr<BaseAST> stmt;
+    // assign when reduce by sysy.y
+    std::string blockName;
 };
 
 class StmtAST: public BaseAST {
 public:
     StmtAST(int n):return_num(n){}
 
-    void generalIR(std::ostream &os){
+    void generateIR(std::ostream &os){
         os << "\t";
         os << "ret "<<return_num<<"\n";
     }
 
+private:
     int return_num;
 };
 

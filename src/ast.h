@@ -166,20 +166,20 @@ public:
 
     void generateIR(std::ostream &os){
         if(left->isNum && right->isNum){
-            os << "\t" << name << "= " << op << " " << left->num <<", " << right->num << "\n";
+            os << "\t" << name << " = " << op << " " << left->num <<", " << right->num << "\n";
         }
         else if(!left->isNum && right->isNum){
             left->generateIR(os);
-            os << "\t" << name << "= " << op << " " << left->name <<", " << right->num << "\n";
+            os << "\t" << name << " = " << op << " " << left->name <<", " << right->num << "\n";
         }
         else if(left->isNum && !right->isNum){
             right->generateIR(os);
-            os << "\t" << name << "= " << op << " " << left->num <<", " << right->name << "\n";
+            os << "\t" << name << " = " << op << " " << left->num <<", " << right->name << "\n";
         }
         else{
             left->generateIR(os);
             right->generateIR(os);
-            os << "\t" << name << "= " << op << " " << left->name <<", " << right->name << "\n";
+            os << "\t" << name << " = " << op << " " << left->name <<", " << right->name << "\n";
         }
     }
 
@@ -191,18 +191,83 @@ protected:
 
 using LOrExpAST1 = ExpBaseAST1;
 
-class LOrExpAST2: public ExpBaseAST2{
+class LOrExpAST2: public ExpBaseAST{
 public:
-    LOrExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST2(ast1, ast2, "or"){}
+    LOrExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
+
+    void generateIR(std::ostream &os){
+        std::string temp1 = "%lorleft" + std::to_string(ExpBaseAST::expNum);
+        std::string temp2 = "%lorright" + std::to_string(ExpBaseAST::expNum);
+        if(left->isNum && right->isNum){
+            os << "\t" << temp1 << " = eq 0," << left->num << "\n";
+            os << "\t" << temp2 << " = eq 0," << right->num << "\n";
+            os << "\t" << name << " =  or " << temp1 <<", " << temp2 << "\n";
+        }
+        else if(!left->isNum && right->isNum){
+            left->generateIR(os);
+            os << "\t" << temp1 << " = eq 0," << left->name << "\n";
+            os << "\t" << temp2 << " = eq 0," << right->num << "\n";
+            os << "\t" << name << " =  or " << temp1 <<", " << temp2 << "\n";
+        }
+        else if(left->isNum && !right->isNum){
+            right->generateIR(os);
+            os << "\t" << temp1 << " = eq 0," << left->num << "\n";
+            os << "\t" << temp2 << " = eq 0," << right->name << "\n";
+            os << "\t" << name << " =  or " << temp1 <<", " << temp2 << "\n";
+        }
+        else{
+            left->generateIR(os);
+            right->generateIR(os);
+            os << "\t" << temp1 << " = eq 0," << left->name << "\n";
+            os << "\t" << temp2 << " = eq 0," << right->name << "\n";
+            os << "\t" << name << " =  or " << temp1 <<", " << temp2 << "\n";
+        }
+    }
+
+private:
+    std::unique_ptr<BaseAST> left;
+    std::unique_ptr<BaseAST> right;
 
 };
 
 using LAndExpAST1 = ExpBaseAST1;
 
-class LAndExpAST2: public ExpBaseAST2{
+class LAndExpAST2: public ExpBaseAST{
 public:
-    LAndExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST2(ast1, ast2, "and"){}
+    LAndExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
 
+    void generateIR(std::ostream &os){
+        std::string temp1 = "%landleft" + std::to_string(ExpBaseAST::expNum);
+        std::string temp2 = "%landright" + std::to_string(ExpBaseAST::expNum);
+        if(left->isNum && right->isNum){
+            os << "\t" << temp1 << " = ne 0," << left->num << "\n";
+            os << "\t" << temp2 << " = ne 0," << right->num << "\n";
+            os << "\t" << name << " =  and " << temp1 <<", " << temp2 << "\n";
+        }
+        else if(!left->isNum && right->isNum){
+            left->generateIR(os);
+            os << "\t" << temp1 << " = ne 0," << left->name << "\n";
+            os << "\t" << temp2 << " = ne 0," << right->num << "\n";
+            os << "\t" << name << " =  and " << temp1 <<", " << temp2 << "\n";
+        }
+        else if(left->isNum && !right->isNum){
+            right->generateIR(os);
+            os << "\t" << temp1 << " = ne 0," << left->num << "\n";
+            os << "\t" << temp2 << " = ne 0," << right->name << "\n";
+            os << "\t" << name << " =  and " << temp1 <<", " << temp2 << "\n";
+        }
+        else{
+            left->generateIR(os);
+            right->generateIR(os);
+            os << "\t" << temp1 << " = ne 0," << left->name << "\n";
+            os << "\t" << temp2 << " = ne 0," << right->name << "\n";
+            os << "\t" << name << " =  and " << temp1 <<", " << temp2 << "\n";
+        }
+    }
+
+private:
+    std::unique_ptr<BaseAST> left;
+    std::unique_ptr<BaseAST> right;
 };
 
 using EqExpAST1 = ExpBaseAST1;

@@ -37,13 +37,14 @@ using namespace std;
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token INT RETURN
+%token INT RETURN PLUS MINUS NOT OR AND EQ NE LT GT LE GE MUL DIV MOD
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt
+%type <ast_val> FuncDef FuncType Block Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp
 %type <int_val> Number
+%type <str_val> UnaryOp
 
 %%
 
@@ -70,15 +71,14 @@ FuncType
 Block
   : '{' Stmt '}' {
     auto block = new BlockAST($2);
-    block->assignBlockName("entry");
+    block->assignBlockName("%entry");
     $$ = block;
   }
   ;
 
 Stmt
-  : RETURN Number ';' {
-    auto stmt = new StmtAST($2);
-    $$ = stmt;
+  : RETURN Exp ';' {
+    $$ = new StmtAST($2);
   }
   ;
 
@@ -87,6 +87,127 @@ Number
     $$ = $1;
   }
   ;
+
+Exp
+    : LOrExp {
+        $$ = new ExpAST($1);
+    }
+    ;
+
+LOrExp
+    : LAndExp {
+        $$ = new LOrExpAST1($1);
+    }
+    | LOrExp OR LAndExp {
+        $$ = new LOrExpAST2($1, $3);
+    }
+    ;
+
+LAndExp
+    : EqExp {
+        $$ = new LAndExpAST1($1);
+    }
+    | LAndExp AND EqExp {
+        $$ = new LAndExpAST2($1, $3);
+    };
+
+EqExp
+    : RelExp {
+        $$ = new EqExpAST1($1);
+    }
+    | EqExp EQ RelExp {
+        $$ = new EqExpAST2($1, $3, "eq");
+    }
+    | EqExp NE RelExp {
+        $$ = new EqExpAST2($1, $3, "ne");
+    }
+    ;
+
+RelExp
+     : AddExp {
+        $$ = new RelExpAST1($1);
+     }
+     | RelExp LT AddExp{
+        $$ = new RelExpAST2($1, $3, "lt");
+     }
+     | RelExp GT AddExp{
+        $$ = new RelExpAST2($1, $3, "gt");
+     }
+     | RelExp LE AddExp{
+        $$ = new RelExpAST2($1, $3, "le");
+     }
+     | RelExp GE AddExp{
+        $$ = new RelExpAST2($1, $3, "ge");
+     }
+     ;
+
+
+AddExp
+    : MulExp {
+        $$ = new AddExpAST1($1);
+    }
+    | AddExp PLUS MulExp
+    {
+        $$ = new AddExpAST2($1, $3, "add");
+    }
+    | AddExp MINUS MulExp {
+        $$ = new AddExpAST2($1, $3, "sub");
+    }
+    ;
+
+MulExp
+    : UnaryExp {
+        $$ = new MulExpAST1($1);
+    }
+    | MulExp MUL UnaryExp {
+        $$ = new MulExpAST2($1, $3, "mul");
+    }
+    | MulExp DIV UnaryExp {
+        $$ = new MulExpAST2($1, $3, "div");
+    }
+    | MulExp MOD UnaryExp {
+        $$ = new MulExpAST2($1, $3, "mod");
+    }
+    ;
+
+UnaryOp
+    : PLUS {
+        $$ = new std::string("add");
+    }
+    | MINUS {
+        $$ = new std::string("sub");
+    }
+    | NOT {
+        $$ = new std::string("eq");
+    }
+    ;
+
+
+UnaryExp
+    : PrimaryExp  {
+        $$ = new UnaryExpAST1($1);
+    }
+    | UnaryOp UnaryExp {
+        $$ = new UnaryExpAST2($1, $2);
+    }
+    ;
+
+PrimaryExp
+    : Number {
+        $$ = new PrimaryExpAST1($1);
+    }
+    | '(' Exp ')' {
+        $$ = new PrimaryExpAST2($2);
+    }
+    ;
+
+
+
+
+
+
+
+
 
 %%
 

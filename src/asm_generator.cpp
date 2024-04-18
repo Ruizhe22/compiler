@@ -32,8 +32,8 @@ AsmGenerator::AsmGenerator(std::stringstream &ss, std::ostream &os):koopa(ss), f
 void AsmGenerator::rawHandler(const koopa_raw_program_t &raw)
 {
     // 执行一些其他的必要操作
-    fos << "\t.text         # 声明之后的数据需要被放入代码段中\n"
-           "\t.globl main   # 声明全局符号 main, 以便链接器处理" ;
+    fos << "\t.text\n"
+           "\t.globl main\n" ;
     // 访问所有全局变量
     visitRawSlice(raw.values);
     // 访问所有函数
@@ -79,7 +79,8 @@ void AsmGenerator::visitRawSlice(const koopa_raw_slice_t &slice)
 void AsmGenerator::visitRawFunction(const koopa_raw_function_t &func)
 {
     // 执行一些其他的必要操作
-    fos << func->name << ":\n";
+    std::string funcName = func->name + 1;
+    fos << funcName << ":\n";
     // 访问所有基本块
     visitRawSlice(func->bbs);
 }
@@ -88,7 +89,8 @@ void AsmGenerator::visitRawFunction(const koopa_raw_function_t &func)
 void AsmGenerator::visitRawBlock(const koopa_raw_basic_block_t &bb)
 {
     if(bb->name){
-        fos << bb->name << ":\n";
+        std::string blockName = bb->name + 1;
+        fos << blockName << ":\n";
     }
     // 访问所有指令
     visitRawSlice(bb->insts);

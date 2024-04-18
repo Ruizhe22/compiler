@@ -199,27 +199,27 @@ public:
         std::string temp1 = "%l0" ;
         std::string temp2 = "%r00" ;
         if(left->isNum && right->isNum){
-            os << "\t" << temp1 << " = eq 0," << left->num << "\n";
-            os << "\t" << temp2 << " = eq 0," << right->num << "\n";
+            os << "\t" << temp1 << " = ne 0," << left->num << "\n";
+            os << "\t" << temp2 << " = ne 0," << right->num << "\n";
             os << "\t" << name << " =  or " << temp1 <<", " << temp2 << "\n";
         }
         else if(!left->isNum && right->isNum){
             left->generateIR(os);
-            os << "\t" << temp1 << " = eq 0," << left->name << "\n";
-            os << "\t" << temp2 << " = eq 0," << right->num << "\n";
+            os << "\t" << temp1 << " = ne 0," << left->name << "\n";
+            os << "\t" << temp2 << " = ne 0," << right->num << "\n";
             os << "\t" << name << " =  or " << temp1 <<", " << temp2 << "\n";
         }
         else if(left->isNum && !right->isNum){
             right->generateIR(os);
-            os << "\t" << temp1 << " = eq 0," << left->num << "\n";
-            os << "\t" << temp2 << " = eq 0," << right->name << "\n";
+            os << "\t" << temp1 << " = ne 0," << left->num << "\n";
+            os << "\t" << temp2 << " = ne 0," << right->name << "\n";
             os << "\t" << name << " =  or " << temp1 <<", " << temp2 << "\n";
         }
         else{
             left->generateIR(os);
             right->generateIR(os);
-            os << "\t" << temp1 << " = eq 0," << left->name << "\n";
-            os << "\t" << temp2 << " = eq 0," << right->name << "\n";
+            os << "\t" << temp1 << " = ne 0," << left->name << "\n";
+            os << "\t" << temp2 << " = ne 0," << right->name << "\n";
             os << "\t" << name << " =  or " << temp1 <<", " << temp2 << "\n";
         }
     }

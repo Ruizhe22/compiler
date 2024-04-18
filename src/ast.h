@@ -197,8 +197,8 @@ public:
     LOrExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
 
     void generateIR(std::ostream &os){
-        std::string temp1 = "%" + std::to_string(rand()) ;
-        std::string temp2 = "%" + std::to_string(rand()) ;
+        std::string temp1 = "%lorl" + name.substr(1);
+        std::string temp2 = "%lorr" + name.substr(1);
         if(left->isNum && right->isNum){
             os << "\t" << temp1 << " = ne 0," << left->num << "\n";
             os << "\t" << temp2 << " = ne 0," << right->num << "\n";
@@ -238,8 +238,8 @@ public:
     LAndExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
 
     void generateIR(std::ostream &os){
-        std::string temp1 = "%" + std::to_string(rand());
-        std::string temp2 = "%" + std::to_string(rand());
+        std::string temp1 = "%landl" + name.substr(1);
+        std::string temp2 = "%landr" + name.substr(1) ;
         if(left->isNum && right->isNum){
             os << "\t" << temp1 << " = ne 0," << left->num << "\n";
             os << "\t" << temp2 << " = ne 0," << right->num << "\n";

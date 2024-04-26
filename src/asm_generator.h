@@ -10,6 +10,8 @@
 #include <cassert>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
+#include <set>
 #include "koopa.h"
 
 class AsmGenerator{
@@ -25,8 +27,18 @@ private:
     void visitRawFunction(const koopa_raw_function_t &func);
     void visitRawBlock(const koopa_raw_basic_block_t &bb);
     void visitRawValue(const koopa_raw_value_t &value);
-    void retHandler(const koopa_raw_return_t &inst);
-    void integerHandler(const koopa_raw_integer_t &inst);
+    void retHandler(const koopa_raw_value_t &value);
+    void integerHandler(const koopa_raw_value_t &value);
+    void binaryHander(const koopa_raw_value_t &value);
+    // koopa var to register t0 - t6
+    std::unordered_map<koopa_raw_value_t, std::string> mapAllocReg;
+    // unalloc register
+    std::set<std::string> setUnallocReg;
+    void initRegSet();
+    std::string allocReg(const koopa_raw_value_t &);
+    std::string allocReg();
+    void restoreReg(const std::string &);
+
 };
 
 

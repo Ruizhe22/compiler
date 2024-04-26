@@ -192,7 +192,231 @@ void AsmGenerator::binaryHander(const koopa_raw_value_t &value){
     koopa_raw_value_t rightValue = inst.rhs;
 
     expReg = allocReg(value);
+    /*
+    if(leftValue->kind.tag == KOOPA_RVT_INTEGER && rightValue->kind.tag == KOOPA_RVT_INTEGER){
+        switch(inst.op){
+            /// Not equal to.
+            case KOOPA_RBO_NOT_EQ:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value != rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
 
+                /// Equal to.
+            case KOOPA_RBO_EQ:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value == rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Greater than.
+            case KOOPA_RBO_GT:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value > rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Less than.
+            case KOOPA_RBO_LT:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value < rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Greater than or equal to.
+            case KOOPA_RBO_GE:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value >= rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Less than or equal to.
+            case KOOPA_RBO_LE:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value <= rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Addition.
+            case KOOPA_RBO_ADD:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value + rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Subtraction.
+            case KOOPA_RBO_SUB:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value - rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Multiplication.
+            case KOOPA_RBO_MUL:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value * rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Division.
+            case KOOPA_RBO_DIV:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value / rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Modulo.
+            case KOOPA_RBO_MOD:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value % rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Bitwise AND.
+            case KOOPA_RBO_AND:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value & rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Bitwise OR.
+            case KOOPA_RBO_OR:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value | rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Bitwise XOR.
+            case KOOPA_RBO_XOR:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value ^ rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Shift left logical.
+            case KOOPA_RBO_SHL:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value << rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Shift right logical.
+            case KOOPA_RBO_SHR:
+                fos << "\tli "+ expReg + ", "
+                    << ((unsigned )leftValue->kind.data.integer.value >> rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+
+                /// Shift right arithmetic.
+            case KOOPA_RBO_SAR:
+                fos << "\tli "+ expReg + ", "
+                    << (leftValue->kind.data.integer.value >> rightValue->kind.data.integer.value)
+                    << "\n";
+                break;
+        }
+    }
+    else if(leftValue->kind.tag == KOOPA_RVT_BINARY && rightValue->kind.tag == KOOPA_RVT_INTEGER){
+        leftReg = allocReg(leftValue);
+        std::string tempReg = allocReg();
+        switch(inst.op){
+            /// Not equal to.
+            case KOOPA_RBO_NOT_EQ:
+                fos << "\txor "+ tempReg + ", " << leftReg << ", " << rightReg << "\n";
+                fos << "\tsnez "+ expReg + ", " << tempReg << "\n";
+                break;
+
+                /// Equal to.
+            case KOOPA_RBO_EQ:
+                fos << "\txor "+ tempReg + ", " << leftReg << ", " << rightReg << "\n";
+                fos << "\tseqz "+ expReg + ", " << tempReg << "\n";
+                break;
+
+                /// Greater than.
+            case KOOPA_RBO_GT:
+                fos << "\tsgt "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Less than.
+            case KOOPA_RBO_LT:
+                fos << "\tslt "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Greater than or equal to.
+            case KOOPA_RBO_GE:
+                fos << "\tslt "+ expReg + ", " << rightReg << ", " << leftReg << "\n";
+                break;
+
+                /// Less than or equal to.
+            case KOOPA_RBO_LE:
+                fos << "\tsgt "+ expReg + ", " << rightReg << ", " << leftReg << "\n";
+                break;
+
+                /// Addition.
+            case KOOPA_RBO_ADD:
+                fos << "\tadd "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Subtraction.
+            case KOOPA_RBO_SUB:
+                fos << "\tsub "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Multiplication.
+            case KOOPA_RBO_MUL:
+                fos << "\tmul "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Division.
+            case KOOPA_RBO_DIV:
+                fos << "\tdiv "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Modulo.
+            case KOOPA_RBO_MOD:
+                fos << "\trem "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Bitwise AND.
+            case KOOPA_RBO_AND:
+                fos << "\tand "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Bitwise OR.
+            case KOOPA_RBO_OR:
+                fos << "\tor "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Bitwise XOR.
+            case KOOPA_RBO_XOR:
+                fos << "\txor "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Shift left logical.
+            case KOOPA_RBO_SHL:
+                fos << "\tsll "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Shift right logical.
+            case KOOPA_RBO_SHR:
+                fos << "\tsrl "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+
+                /// Shift right arithmetic.
+            case KOOPA_RBO_SAR:
+                fos << "\tsra "+ expReg + ", " << leftReg << ", " << rightReg << "\n";
+                break;
+        }
+    }
+    else if(leftValue->kind.tag == KOOPA_RVT_INTEGER && rightValue->kind.tag == KOOPA_RVT_BINARY){
+
+    }
+    else if(leftValue->kind.tag == KOOPA_RVT_BINARY && rightValue->kind.tag == KOOPA_RVT_BINARY){
+
+    }
+    else{
+        assert(false);
+    }
+*/
     switch (leftValue->kind.tag){
         case KOOPA_RVT_INTEGER:
             leftReg = allocReg();
@@ -312,8 +536,8 @@ void AsmGenerator::binaryHander(const koopa_raw_value_t &value){
             break;
     }
 
-    if(leftValue->kind.tag != KOOPA_RVT_INTEGER) restoreReg(leftReg);
-    if(rightValue->kind.tag != KOOPA_RVT_INTEGER) restoreReg(rightReg);
-
+    //if(leftValue->kind.tag != KOOPA_RVT_INTEGER) restoreReg(leftReg);
+    //if(rightValue->kind.tag != KOOPA_RVT_INTEGER) restoreReg(rightReg);
+    restoreReg(tempReg);
     return;
 }

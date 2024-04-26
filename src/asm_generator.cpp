@@ -312,5 +312,8 @@ void AsmGenerator::binaryHander(const koopa_raw_value_t &value){
             break;
     }
 
+    if(leftValue->kind.tag != KOOPA_RVT_INTEGER) restoreReg(leftReg);
+    if(rightValue->kind.tag != KOOPA_RVT_INTEGER) restoreReg(rightReg);
+
     return;
 }

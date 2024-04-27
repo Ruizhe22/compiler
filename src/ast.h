@@ -319,10 +319,6 @@ class ExpAST: public ExpBaseAST {
 public:
 
     ExpAST(BaseAST *ast):ExpBaseAST(false),lOrExp(ast){
-        if(lOrExp->isNum){
-            isNum = true;
-            num = lOrExp->num;
-        }
         name = lOrExp->name;
     }
 
@@ -348,10 +344,6 @@ class ExpBaseAST1: public ExpBaseAST{
 public:
     ExpBaseAST1(BaseAST *ast):ExpBaseAST(false),delegate(ast){
         name = delegate->name;
-        if(delegate->isNum){
-            isNum = true;
-            num = delegate->num;
-        }
     }
 
     void generateIR(std::ostream &os){
@@ -374,22 +366,7 @@ private:
 
 class ExpBaseAST2: public ExpBaseAST{
 public:
-    ExpBaseAST2(BaseAST *ast1, BaseAST *ast2, const std::string &opt):ExpBaseAST(true),left(ast1),right(ast2),op(opt){
-        if(left->isNum && right->isNum){
-            isNum = true;
-            if(op =="lt") { num = left->num < right->num; }
-            if(op =="gt") { num = left->num > right->num; }
-            if(op =="le") { num = left->num <= right->num; }
-            if(op =="ge") { num = left->num >= right->num; }
-            if(op =="add") { num = left->num + right->num; }
-            if(op =="sub") { num = left->num - right->num; }
-            if(op =="mul") { num = left->num * right->num; }
-            if(op =="div") { num = left->num / right->num; }
-            if(op =="mod") { num = left->num % right->num; }
-            if(op =="eq") { num = left->num == right->num; }
-            if(op =="ne") { num = left->num != right->num; }
-        }
-    }
+    ExpBaseAST2(BaseAST *ast1, BaseAST *ast2, const std::string &opt):ExpBaseAST(true),left(ast1),right(ast2),op(opt){}
 
     void generateIR(std::ostream &os){
         if(left->isNum && right->isNum){
@@ -444,12 +421,7 @@ using LOrExpAST1 = ExpBaseAST1;
 
 class LOrExpAST2: public ExpBaseAST{
 public:
-    LOrExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){
-        if(left->isNum && right->isNum){
-            isNum = true;
-            num = left->num || right->num;
-        }
-    }
+    LOrExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
 
     void generateIR(std::ostream &os){
         std::string temp1 = "%lorl" + name.substr(1);
@@ -504,13 +476,7 @@ using LAndExpAST1 = ExpBaseAST1;
 
 class LAndExpAST2: public ExpBaseAST{
 public:
-    LAndExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){
-        if(left->isNum && right->isNum){
-            --ExpBaseAST::expNum;
-            isNum = true;
-            num = left->num && right->num;
-        }
-    }
+    LAndExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
 
     void generateIR(std::ostream &os){
         std::string temp1 = "%landl" + name.substr(1);
@@ -580,10 +546,6 @@ class UnaryExpAST1: public ExpBaseAST{
 public:
     UnaryExpAST1(BaseAST *ast):ExpBaseAST(false),primaryExp(ast){
         name = primaryExp->name;
-        if(primaryExp->isNum){
-            isNum = true;
-            num = primaryExp->num;
-        }
     }
 
     void generateIR(std::ostream &os){
@@ -611,23 +573,7 @@ private:
 
 class UnaryExpAST2: public ExpBaseAST{
 public:
-    UnaryExpAST2(std::string *opt, BaseAST *ast):ExpBaseAST(true),unaryExp(ast),op(*opt){
-        /*if(unaryExp->isNum){
-            isNum = true;
-            if(op == "add"){
-                num = unaryExp->num;
-            }
-            else if(op == "sub"){
-                num = -unaryExp->num;
-            }
-            else if(op == "not"){
-                num = (0==unaryExp->num);
-            }
-        }
-        else if(op=="add"){
-            name = unaryExp->name;
-        }*/
-    }
+    UnaryExpAST2(std::string *opt, BaseAST *ast):ExpBaseAST(true),unaryExp(ast),op(*opt){}
 
     void generateIR(std::ostream &os){
         if(op=="not") op = "eq";

@@ -375,7 +375,21 @@ private:
 
 class ExpBaseAST2: public ExpBaseAST{
 public:
-    ExpBaseAST2(BaseAST *ast1, BaseAST *ast2, const std::string &opt):ExpBaseAST(true),left(ast1),right(ast2),op(opt){}
+    ExpBaseAST2(BaseAST *ast1, BaseAST *ast2, const std::string &opt):ExpBaseAST(true),left(ast1),right(ast2),op(opt){
+        if(left->isNum && right->isNum){
+            isNum = true;
+            if(op =="lt") { num = left->num < right->num; }
+            if(op =="le") { num = left->num <= right->num; }
+            if(op =="ge") { num = left->num >= right->num; }
+            if(op =="add") { num = left->num + right->num; }
+            if(op =="sub") { num = left->num - right->num; }
+            if(op =="mul") { num = left->num * right->num; }
+            if(op =="div") { num = left->num / right->num; }
+            if(op =="mod") { num = left->num % right->num; }
+            if(op =="eq") { num = left->num == right->num; }
+            if(op =="ne") { num = left->num != right->num; }
+        }
+    }
 
     void generateIR(std::ostream &os){
         if(left->isNum && right->isNum){
@@ -426,7 +440,12 @@ using LOrExpAST1 = ExpBaseAST1;
 
 class LOrExpAST2: public ExpBaseAST{
 public:
-    LOrExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
+    LOrExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){
+        if(left->isNum && right->isNum){
+            isNum = true;
+            num = left->num || right->num;
+        }
+    }
 
     void generateIR(std::ostream &os){
         std::string temp1 = "%lorl" + name.substr(1);
@@ -478,7 +497,12 @@ using LAndExpAST1 = ExpBaseAST1;
 
 class LAndExpAST2: public ExpBaseAST{
 public:
-    LAndExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){}
+    LAndExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){
+        if(left->isNum && right->isNum){
+            isNum = true;
+            num = left->num && right->num;
+        }
+    }
 
     void generateIR(std::ostream &os){
         std::string temp1 = "%landl" + name.substr(1);

@@ -37,7 +37,7 @@ using namespace std;
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token INT RETURN PLUS MINUS NOT OR AND EQ NE LT GT LE GE MUL DIV MOD
+%token INT RETURN CONST PLUS MINUS NOT OR AND EQ NE LT GT LE GE MUL DIV MOD
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
@@ -69,7 +69,7 @@ FuncType
   ;
 
 Block
-    : "{" BlockItemList "}" {
+    : '{' BlockItemList '}' {
         auto block = new BlockAST($2);
         block->assignBlockName("%entry");
         $$ = block;
@@ -100,11 +100,7 @@ Stmt
   }
   ;
 
-Decl
-    : ConstDecl {
-        $$ = new DeclAST($1,true);
-    }
-    ;
+
 
 Number
   : INT_CONST {
@@ -229,8 +225,15 @@ PrimaryExp
     ;
 
 
+Decl
+    : ConstDecl {
+        $$ = new DeclAST($1,true);
+    }
+    ;
+
+
 ConstDecl
-    : "const" BType ConstDef ConstDefList ";" {
+    : CONST BType ConstDef ConstDefList ';' {
         $$ = new ConstDeclAST($2, $3, $4);
     }
     ;
@@ -239,20 +242,20 @@ ConstDefList
     : {
         $$ = new ConstDefListAST();
     }
-    | ConstDefList "," ConstDef {
+    | ConstDefList ',' ConstDef {
         $$ = new ConstDefListAST($1,$3);
     }
     ;
 
 ConstDef
-    : IDENT "=" ConstInitVal{
+    : IDENT '=' ConstInitVal{
 
         $$ = new ConstDefAST($1,$3);
     }
     ;
 
 BType
-    : "int" {
+    : INT {
         $$ = new std::string("int");
     }
     ;

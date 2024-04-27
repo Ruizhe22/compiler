@@ -11,15 +11,15 @@
 #include <cstdlib>
 #include <string>
 #include <unordered_map>
-#include <vector>
+#include <deque>
 
 class SymbolInfo{
 public:
     SymbolInfo(std::string namet, std::string typet, bool isConstt, int constNumt)
-        :name(namet),type(typet),isConst(isConstt),constNum(constNumt){}
+        :name(namet),type(typet),isNum(isConstt),constNum(constNumt){}
 
     std::string name;
-    bool isConst;
+    bool isNum;
     std::string type;
     int constNum;
 };
@@ -150,7 +150,9 @@ private:
 
 class BlockItemAST: public BaseAST {
 public:
-    BlockItemAST(BaseAST *itemt, bool isdecl):item(itemt),isDecl(isdecl){}
+    BlockItemAST(BaseAST *itemt, bool isdecl):item(itemt),isDecl(isdecl){
+        symbolTable = item-> symbolTable;
+    }
 
     void generateIR(std::ostream &os){
         item->generateIR(os);
@@ -162,14 +164,123 @@ public:
 
 class DeclAST: public BaseAST{
 public:
-    DeclAST(BaseAST *declt, bool isconst):decl(declt),isConst(isconst){
+    DeclAST(BaseAST *declt, bool isconst):decl(declt),isNum(isconst){
+        symbolTable = decl->symbolTable;
+    }
+
+    void spreadSymbolTable(){
+        // 先传下去 decl语句之前的符号表
+        decl->symbolTable = symbolTable;
+        decl->spreadSymbolTable();
+        // 再传回 decl语句起作用之后的符号表
         symbolTable = decl->symbolTable;
     }
 
 private:
-    std::unique_ptr<BaseAST> decl;
-    bool isConst;
+    std::shared_ptr<BaseAST> decl;
+    bool isNum;
 };
+
+
+
+class ConstExpAST: public BaseAST{
+public:
+    ConstExpAST(BaseAST *expt):exp(expt){
+        // without error detection
+        isNum = exp->isNum;
+        num = exp->num;
+        name = exp->name;
+    }
+    void spreadSymbolTable(){
+        exp->symbolTable = symbolTable;
+        exp->spreadSymbolTable();
+        if(exp->isNum){
+            num = exp->num;
+            isNum = true;
+        }
+    }
+
+private:
+    std::unique_ptr<BaseAST> exp;
+};
+
+class ConstInitValAST: public BaseAST{
+public:
+    ConstInitValAST(BaseAST *constexp):constExp(constexp){
+        isNum = constExp->isNum;
+        num = constExp->num;
+        name = constExp->name;
+    }
+    void spreadSymbolTable(){
+        constExp->symbolTable = symbolTable;
+        constExp->spreadSymbolTable();
+        if(constExp->isNum){
+            num = constExp->num;
+            isNum = true;
+        }
+    }
+private:
+    std::unique_ptr<BaseAST> constExp;
+};
+
+class ConstDefAST: public BaseAST{
+public:
+    ConstDefAST(std::string *id, BaseAST *val):constInitVal(val){
+        name = "@" + *id;
+        num = constInitVal->num;
+        isNum = constInitVal->isNum;
+    }
+    void spreadSymbolTable(){
+        constInitVal->symbolTable = symbolTable;
+        constInitVal->spreadSymbolTable();
+        if(constInitVal->isNum){
+            num = constInitVal->num;
+            isNum = true;
+            symbolTable[name]->constNum = num;
+        }
+    }
+private:
+    std::unique_ptr<BaseAST> constInitVal;
+};
+
+class ConstDefListAST: public BaseAST{
+public:
+    ConstDefListAST() {
+    };
+    ConstDefListAST(BaseAST *list, BaseAST *def):defList(((ConstDefListAST *)list)->defList){
+        defList.push_back(std::shared_ptr<ConstDefAST>((ConstDefAST *)def));
+    }
+
+    std::deque<std::shared_ptr<BaseAST>> defList;
+};
+
+class ConstDeclAST: public BaseAST{
+public:
+    ConstDeclAST(std::string *btype, BaseAST *def, BaseAST *list):type(*btype){
+        constDefList = ((ConstDefListAST *)list)->defList;
+        constDefList.push_front(std::shared_ptr<BaseAST>(def));
+        def->symbolTable[def->name] = std::make_shared<SymbolInfo>(def->name,type,true,def->num);
+        for(const auto &d : ((ConstDefListAST *)list)->defList){
+            d->symbolTable[d->name] = std::make_shared<SymbolInfo>(d->name,type,true,d->num);
+        }
+
+    }
+
+    void spreadSymbolTable(){
+        // 先传下去 decl语句之前的符号表 对于每个新的符号
+        for(const auto &cd : constDefList){
+            cd->symbolTable.merge(symbolTable);
+            //std::cout<<"#### "<< cd->symbolTable["@a"]->constNum  << std::endl;
+            cd->spreadSymbolTable();
+            symbolTable = cd->symbolTable;
+        }
+    }
+
+private:
+    std::string type;
+    std::deque<std::shared_ptr<BaseAST>> constDefList;
+};
+
 
 class BlockItemListAST: public BaseAST {
 public:
@@ -179,15 +290,20 @@ public:
         itemList.push_back(temp->item);
         // update symbol table of item and item list
         if(temp->isDecl){
-            std::shared_ptr<DeclAST> declPtr = std::dynamic_pointer_cast<DeclAST>(temp->item);
-            symbolTable.merge(declPtr->symbolTable);
-            //declPtr->symbolTable = symbolTable;
+            std::shared_ptr<DeclAST> decl = std::dynamic_pointer_cast<DeclAST>(temp->item);
+            decl->symbolTable = symbolTable;
+            decl->spreadSymbolTable();
+            symbolTable.merge(decl->symbolTable);
+            symbolTable.merge(((BlockItemListAST *)blockItemsTemp)->symbolTable);
         }
         else{
+            symbolTable.merge(temp->symbolTable);
+            symbolTable.merge(((BlockItemListAST *)blockItemsTemp)->symbolTable);
             std::shared_ptr<StmtAST> stmt = std::dynamic_pointer_cast<StmtAST>(temp->item);
-            //stmt->symbolTable = symbolTable;
-            //stmt->spreadSymbolTable();
+            stmt->symbolTable = symbolTable;
+            stmt->spreadSymbolTable();
         }
+
     }
 
     void generateIR(std::ostream &os){
@@ -196,7 +312,7 @@ public:
         }
     }
 
-    std::vector<std::shared_ptr<BaseAST>> itemList;
+    std::deque<std::shared_ptr<BaseAST>> itemList;
 };
 
 
@@ -431,6 +547,7 @@ public:
         name = primaryExp->name;
         if(primaryExp->isNum){
             isNum = true;
+            num = primaryExp->num;
         }
     }
 
@@ -496,6 +613,18 @@ public:
     void spreadSymbolTable(){
         unaryExp->symbolTable = symbolTable;
         unaryExp->spreadSymbolTable();
+        if(unaryExp->isNum){
+            isNum = true;
+            if(op == "add"){
+                num = unaryExp->num;
+            }
+            else if(op == "sub"){
+                num = -unaryExp->num;
+            }
+            else if(op == "eq"){
+                num = (0==unaryExp->num);
+            }
+        }
     }
 
 private:
@@ -537,6 +666,10 @@ public:
     void spreadSymbolTable(){
         exp->symbolTable = symbolTable;
         exp->spreadSymbolTable();
+        if(exp->isNum){
+            isNum = true;
+            num = exp->num;
+        }
     }
 
 private:
@@ -553,7 +686,7 @@ public:
 
     void spreadSymbolTable(){
         std::shared_ptr<SymbolInfo> symbol = symbolTable[name];
-        if(symbol->isConst){
+        if(symbol->isNum){
             isNum = true;
             num = symbol->constNum;
         }
@@ -561,58 +694,6 @@ public:
     }
 };
 
-class ConstExpAST: public BaseAST{
-public:
-    ConstExpAST(BaseAST *expt):exp(expt){
-        // without error detection
-        isNum = true;
-        num = exp->num;
-    }
-private:
-    std::unique_ptr<BaseAST> exp;
-};
-
-class ConstInitValAST: public BaseAST{
-public:
-    ConstInitValAST(BaseAST *constexp):constExp(constexp){
-        isNum = true;
-        num = constExp->num;
-    }
-private:
-    std::unique_ptr<BaseAST> constExp;
-};
-
-class ConstDefAST: public BaseAST{
-public:
-    ConstDefAST(std::string *id, BaseAST *val):constInitVal(val){
-        name = "@" + *id;
-        num = constInitVal->num;
-    }
-private:
-    std::unique_ptr<BaseAST> constInitVal;
-};
-
-class ConstDefListAST: public BaseAST{
-public:
-    ConstDefListAST() = default;
-    ConstDefListAST(BaseAST *list, BaseAST *def):defList(((ConstDefListAST *)list)->defList){
-        defList.push_back(std::shared_ptr<ConstDefAST>((ConstDefAST *)def));
-    }
-    std::vector<std::shared_ptr<ConstDefAST>> defList;
-};
-
-class ConstDeclAST: public BaseAST{
-public:
-    ConstDeclAST(std::string *btype, BaseAST *def, BaseAST *list):type(*btype){
-        symbolTable[def->name] = std::make_shared<SymbolInfo>(def->name,type,true,def->num);
-        for(const auto &d : ((ConstDefListAST *)list)->defList){
-            symbolTable[d->name] = std::make_shared<SymbolInfo>(d->name,type,true,d->num);
-        }
-    }
-
-private:
-    std::string type;
-};
 
 
 

@@ -289,11 +289,14 @@ public:
         itemList.push_back(temp->item);
         // update symbol table of item and item list
         if(temp->isDecl){
+            //std::cout << "###" <<std::endl<< symbolTable["@a"]->constNum << std::endl;
+            symbolTable.merge(((BlockItemListAST *)blockItemsTemp)->symbolTable);
             std::shared_ptr<DeclAST> decl = std::dynamic_pointer_cast<DeclAST>(temp->item);
             decl->symbolTable = symbolTable;
             decl->spreadSymbolTable();
             symbolTable.merge(decl->symbolTable);
-            symbolTable.merge(((BlockItemListAST *)blockItemsTemp)->symbolTable);
+
+
         }
         else{
             symbolTable.merge(temp->symbolTable);

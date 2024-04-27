@@ -379,6 +379,7 @@ public:
         if(left->isNum && right->isNum){
             isNum = true;
             if(op =="lt") { num = left->num < right->num; }
+            if(op =="gt") { num = left->num > right->num; }
             if(op =="le") { num = left->num <= right->num; }
             if(op =="ge") { num = left->num >= right->num; }
             if(op =="add") { num = left->num + right->num; }
@@ -418,6 +419,7 @@ public:
         if(left->isNum && right->isNum){
             isNum = true;
             if(op =="lt") { num = left->num < right->num; }
+            if(op =="gt") { num = left->num > right->num; }
             if(op =="le") { num = left->num <= right->num; }
             if(op =="ge") { num = left->num >= right->num; }
             if(op =="add") { num = left->num + right->num; }
@@ -609,7 +611,7 @@ public:
             else if(op == "sub"){
                 num = -unaryExp->num;
             }
-            else if(op == "eq"){
+            else if(op == "not"){
                 num = (0==unaryExp->num);
             }
         }
@@ -620,6 +622,7 @@ public:
     }
 
     void generateIR(std::ostream &os){
+        if(op=="not") op = "eq";
         if(unaryExp->isNum){
             if(op != "add") {
                 os << "\t" << name << "= " << op << " 0, " << unaryExp->num << "\n";
@@ -645,7 +648,7 @@ public:
             else if(op == "sub"){
                 num = -unaryExp->num;
             }
-            else if(op == "eq"){
+            else if(op == "not"){
                 num = (0==unaryExp->num);
             }
         }

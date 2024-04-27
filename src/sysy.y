@@ -198,7 +198,7 @@ UnaryOp
         $$ = new std::string("sub");
     }
     | NOT {
-        $$ = new std::string("eq");
+        $$ = new std::string("not");
     }
     ;
 

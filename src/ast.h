@@ -57,11 +57,10 @@ public:
     //restore to 0 in funcDef construct
     static int expNum;
     // if not change expNum, child need to assign name in the body
-    ExpBaseAST(bool fresh){
-        if(fresh){
-            name = "%"+std::to_string(++ExpBaseAST::expNum);
-        }
+    ExpBaseAST(bool fresh):allocNewName(fresh){
     }
+
+    bool allocNewName;
 };
 
 // FuncDef 也是 BaseAST
@@ -430,6 +429,9 @@ public:
             if(op =="eq") { num = left->num == right->num; }
             if(op =="ne") { num = left->num != right->num; }
         }
+        else if(allocNewName){
+            name = "%"+std::to_string(++ExpBaseAST::expNum);
+        }
     }
 
 protected:
@@ -487,6 +489,9 @@ public:
             isNum = true;
             num = left->num || right->num;
         }
+        else if(allocNewName){
+            name = "%"+std::to_string(++ExpBaseAST::expNum);
+        }
     }
 
 private:
@@ -501,6 +506,7 @@ class LAndExpAST2: public ExpBaseAST{
 public:
     LAndExpAST2(BaseAST *ast1, BaseAST *ast2):ExpBaseAST(true),left(ast1),right(ast2){
         if(left->isNum && right->isNum){
+            --ExpBaseAST::expNum;
             isNum = true;
             num = left->num && right->num;
         }
@@ -543,6 +549,9 @@ public:
         if(left->isNum && right->isNum){
             isNum = true;
             num = left->num && right->num;
+        }
+        else if(allocNewName){
+            name = "%"+std::to_string(++ExpBaseAST::expNum);
         }
     }
 
@@ -616,7 +625,6 @@ public:
             }
         }
         else if(op=="add"){
-            --ExpBaseAST::expNum;
             name = unaryExp->name;
         }
     }
@@ -632,6 +640,9 @@ public:
             unaryExp->generateIR(os);
             if(op != "add") {
                 os << "\t" << name << "= " << op << " 0, " << unaryExp->name << "\n";
+            }
+            else if(allocNewName){
+                name = "%"+std::to_string(++ExpBaseAST::expNum);
             }
         }
 

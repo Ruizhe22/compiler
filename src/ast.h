@@ -612,7 +612,7 @@ private:
 class UnaryExpAST2: public ExpBaseAST{
 public:
     UnaryExpAST2(std::string *opt, BaseAST *ast):ExpBaseAST(true),unaryExp(ast),op(*opt){
-        if(unaryExp->isNum){
+        /*if(unaryExp->isNum){
             isNum = true;
             if(op == "add"){
                 num = unaryExp->num;
@@ -626,7 +626,7 @@ public:
         }
         else if(op=="add"){
             name = unaryExp->name;
-        }
+        }*/
     }
 
     void generateIR(std::ostream &os){

@@ -9,15 +9,32 @@
 #include <memory>
 #include <iostream>
 #include <cstdlib>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+class SymbolInfo{
+public:
+    SymbolInfo(std::string namet, std::string typet, bool isConstt, int constNumt)
+        :name(namet),type(typet),isConst(isConstt),constNum(constNumt){}
+
+    std::string name;
+    bool isConst;
+    std::string type;
+    int constNum;
+};
 
 // 所有 AST 的基类
 class BaseAST {
 public:
-    virtual void generateIR(std::ostream &os){};
+    virtual void generateIR(std::ostream &os){ return; }
+    virtual void spreadSymbolTable(){ return; }
     virtual ~BaseAST() = default;
     std::string name;
     bool isNum = false;
+    bool isID = false;
     int num;
+    std::unordered_map<std::string, std::shared_ptr<SymbolInfo>> symbolTable;
 };
 
 // CompUnit 是 BaseAST
@@ -82,25 +99,6 @@ private:
     std::string type;
 };
 
-class BlockAST: public BaseAST {
-public:
-    BlockAST(BaseAST *ast):stmt(ast){}
-
-    void generateIR(std::ostream &os){
-        os << name <<":\n";
-        stmt->generateIR(os);
-    }
-
-    void assignBlockName(std::string name_t){
-        name = name_t;
-    }
-
-private:
-    std::unique_ptr<BaseAST> stmt;
-    // assign when reduce by sysy.y
-    std::string name;
-};
-
 class StmtAST: public BaseAST {
 public:
     StmtAST(BaseAST *ast):exp(ast){}
@@ -113,13 +111,89 @@ public:
             exp->generateIR(os);
             os << "\tret "<< exp->name <<"\n";
         }
+    }
 
+    void spreadSymbolTable(){
+        exp->symbolTable = symbolTable;
+        exp->spreadSymbolTable();
     }
 
 private:
     std::unique_ptr<BaseAST> exp;
 };
 
+class BlockAST: public BaseAST {
+public:
+    BlockAST(BaseAST *ast):BlockItemListAST(ast){
+        //update child block symbol table
+    }
+
+    void generateIR(std::ostream &os){
+        os << name <<":\n";
+        BlockItemListAST->generateIR(os);
+    }
+
+    void assignBlockName(std::string name_t){
+        name = name_t;
+    }
+
+private:
+    std::unique_ptr<BaseAST> BlockItemListAST;
+    // assign when reduce by sysy.y
+    std::string name;
+
+};
+
+class BlockItemAST: public BaseAST {
+public:
+    BlockItemAST(BaseAST *itemt, bool isdecl):item(itemt),isDecl(isdecl){}
+
+    void generateIR(std::ostream &os){
+        item->generateIR(os);
+    }
+
+    std::shared_ptr<BaseAST> item;
+    bool isDecl;
+};
+
+class DeclAST: public BaseAST{
+public:
+    DeclAST(BaseAST *declt, bool isconst):decl(declt),isConst(isconst){
+        symbolTable = decl->symbolTable;
+    }
+
+private:
+    std::unique_ptr<BaseAST> decl;
+    bool isConst;
+};
+
+class BlockItemListAST: public BaseAST {
+public:
+    BlockItemListAST() = default;
+    BlockItemListAST(BaseAST *blockItemsTemp, BaseAST *blockItemTemp):itemList(((BlockItemListAST *)blockItemsTemp)->itemList){
+        auto temp = (BlockItemAST *)blockItemTemp;
+        itemList.push_back(temp->item);
+        // update symbol table of item and item list
+        if(temp->isDecl){
+            std::shared_ptr<DeclAST> declPtr = std::dynamic_pointer_cast<DeclAST>(temp->item);
+            symbolTable.merge(declPtr->symbolTable);
+            declPtr->symbolTable = symbolTable;
+        }
+        else{
+            std::shared_ptr<StmtAST> stmt = std::dynamic_pointer_cast<StmtAST>(temp->item);
+            stmt->symbolTable = symbolTable;
+            stmt->spreadSymbolTable();
+        }
+    }
+
+    void generateIR(std::ostream &os){
+        for(const auto &item : itemList){
+            item->generateIR(os);
+        }
+    }
+
+    std::vector<std::shared_ptr<BaseAST>> itemList;
+};
 
 
 class ExpAST: public ExpBaseAST {
@@ -137,6 +211,15 @@ public:
         lOrExp->generateIR(os);
     }
 
+    void spreadSymbolTable(){
+        lOrExp->symbolTable = symbolTable;
+        lOrExp->spreadSymbolTable();
+        if(lOrExp->isNum){
+            isNum = true;
+            num = lOrExp->num;
+        }
+    }
+
 private:
     std::unique_ptr<BaseAST> lOrExp;
 
@@ -145,15 +228,20 @@ private:
 class ExpBaseAST1: public ExpBaseAST{
 public:
     ExpBaseAST1(BaseAST *ast):ExpBaseAST(false),delegate(ast){
-        if(delegate->isNum){
-            isNum = true;
-            num = delegate->num;
-        }
         name = delegate->name;
     }
 
     void generateIR(std::ostream &os){
         delegate->generateIR(os);
+    }
+
+    void spreadSymbolTable(){
+        delegate->symbolTable = symbolTable;
+        delegate->spreadSymbolTable();
+        if(delegate->isNum){
+            isNum = true;
+            num = delegate->num;
+        }
     }
 
 private:
@@ -181,6 +269,26 @@ public:
             left->generateIR(os);
             right->generateIR(os);
             os << "\t" << name << " = " << op << " " << left->name <<", " << right->name << "\n";
+        }
+    }
+
+    void spreadSymbolTable(){
+        left->symbolTable = symbolTable;
+        left->spreadSymbolTable();
+        right->symbolTable = symbolTable;
+        right->spreadSymbolTable();
+        if(left->isNum && right->isNum){
+            isNum = true;
+            if(op =="lt") { num = left->num < right->num; }
+            if(op =="le") { num = left->num <= right->num; }
+            if(op =="ge") { num = left->num >= right->num; }
+            if(op =="add") { num = left->num + right->num; }
+            if(op =="sub") { num = left->num - right->num; }
+            if(op =="mul") { num = left->num * right->num; }
+            if(op =="div") { num = left->num / right->num; }
+            if(op =="mod") { num = left->num % right->num; }
+            if(op =="eq") { num = left->num == right->num; }
+            if(op =="ne") { num = left->num != right->num; }
         }
     }
 
@@ -225,6 +333,17 @@ public:
         }
     }
 
+    void spreadSymbolTable(){
+        left->symbolTable = symbolTable;
+        left->spreadSymbolTable();
+        right->symbolTable = symbolTable;
+        right->spreadSymbolTable();
+        if(left->isNum && right->isNum){
+            isNum = true;
+            num = left->num || right->num;
+        }
+    }
+
 private:
     std::unique_ptr<BaseAST> left;
     std::unique_ptr<BaseAST> right;
@@ -266,6 +385,17 @@ public:
         }
     }
 
+    void spreadSymbolTable(){
+        left->symbolTable = symbolTable;
+        left->spreadSymbolTable();
+        right->symbolTable = symbolTable;
+        right->spreadSymbolTable();
+        if(left->isNum && right->isNum){
+            isNum = true;
+            num = left->num && right->num;
+        }
+    }
+
 private:
     std::unique_ptr<BaseAST> left;
     std::unique_ptr<BaseAST> right;
@@ -290,15 +420,26 @@ using MulExpAST2 = ExpBaseAST2;
 class UnaryExpAST1: public ExpBaseAST{
 public:
     UnaryExpAST1(BaseAST *ast):ExpBaseAST(false),primaryExp(ast){
-        if(primaryExp->isNum){
-            isNum = true;
-            num = primaryExp->num;
-        }
         name = primaryExp->name;
     }
 
     void generateIR(std::ostream &os){
         primaryExp->generateIR(os);
+    }
+
+    void spreadSymbolTable(){
+        primaryExp->symbolTable = symbolTable;
+        primaryExp->spreadSymbolTable();
+        if(primaryExp->isNum){
+            isNum = true;
+            num = primaryExp->num;
+        }
+        /*
+         else if(primaryExp->isID){
+            // in symbol table not const id
+
+        }
+         */
     }
 
 private:
@@ -307,7 +448,7 @@ private:
 
 class UnaryExpAST2: public ExpBaseAST{
 public:
-    UnaryExpAST2(std::string *opp, BaseAST *ast):ExpBaseAST(true),unaryExp(ast),op(*opp){
+    UnaryExpAST2(std::string *opt, BaseAST *ast):ExpBaseAST(true),unaryExp(ast),op(*opt){
         if(unaryExp->isNum){
             isNum = true;
             if(op == "add"){
@@ -341,6 +482,11 @@ public:
 
     }
 
+    void spreadSymbolTable(){
+        unaryExp->symbolTable = symbolTable;
+        unaryExp->spreadSymbolTable();
+    }
+
 private:
     std::unique_ptr<BaseAST> unaryExp;
     std::string op;
@@ -353,8 +499,13 @@ public:
         isNum = true;
         num = n ;
     }
+
     void generateIR(std::ostream &os){
         os << "\t" << name << "= add 0, " << num << "\n";
+    }
+
+    void spreadSymbolTable(){
+        return;
     }
 };
 
@@ -372,8 +523,86 @@ public:
         exp->generateIR(os);
     }
 
+    void spreadSymbolTable(){
+        exp->symbolTable = symbolTable;
+        exp->spreadSymbolTable();
+    }
+
 private:
     std::unique_ptr<BaseAST> exp;
 };
+
+class PrimaryExpAST3: public BaseAST{
+public:
+    // although false and without explictly assign its name, no exp will invoke its name.
+    PrimaryExpAST3(std::string *id){
+        name = "@"+ *id;
+        isID = true;
+    }
+
+    void spreadSymbolTable(){
+        std::shared_ptr<SymbolInfo> symbol = symbolTable[name];
+        if(symbol->isConst){
+            isNum = true;
+            num = symbol->constNum;
+        }
+        return;
+    }
+};
+
+class ConstExpAST: public BaseAST{
+public:
+    ConstExpAST(BaseAST *expt):exp(expt){
+        // without error detection
+        isNum = true;
+        num = exp->num;
+    }
+private:
+    std::unique_ptr<BaseAST> exp;
+};
+
+class ConstInitValAST: public BaseAST{
+public:
+    ConstInitValAST(BaseAST *constexp):constExp(constexp){
+        isNum = true;
+        num = constExp->num;
+    }
+private:
+    std::unique_ptr<BaseAST> constExp;
+};
+
+class ConstDefAST: public BaseAST{
+public:
+    ConstDefAST(std::string *id, BaseAST *val):constInitVal(val){
+        name = "@" + *id;
+        num = constInitVal->num;
+    }
+private:
+    std::unique_ptr<BaseAST> constInitVal;
+};
+
+class ConstDefListAST: public BaseAST{
+public:
+    ConstDefListAST() = default;
+    ConstDefListAST(BaseAST *list, BaseAST *def):defList(((ConstDefListAST *)list)->defList){
+        defList.push_back(std::shared_ptr<ConstDefAST>((ConstDefAST *)def));
+    }
+    std::vector<std::shared_ptr<ConstDefAST>> defList;
+};
+
+class ConstDeclAST: public BaseAST{
+public:
+    ConstDeclAST(std::string *btype, BaseAST *def, BaseAST *list):type(*btype){
+        symbolTable[def->name] = std::make_shared<SymbolInfo>(def->name,type,true,def->num);
+        for(const auto &d : ((ConstDefListAST *)list)->defList){
+            symbolTable[d->name] = std::make_shared<SymbolInfo>(d->name,type,true,d->num);
+        }
+    }
+
+private:
+    std::string type;
+};
+
+
 
 #endif //COMPILER_AST_H

@@ -42,9 +42,9 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncDef FuncType Block Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp
+%type <ast_val> FuncDef FuncType Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
 %type <int_val> Number
-%type <str_val> UnaryOp
+%type <str_val> UnaryOp BType LVal
 
 %%
 
@@ -69,18 +69,42 @@ FuncType
   ;
 
 Block
-  : '{' Stmt '}' {
-    auto block = new BlockAST($2);
-    block->assignBlockName("%entry");
-    $$ = block;
-  }
-  ;
+    : "{" BlockItemList "}" {
+        auto block = new BlockAST($2);
+        block->assignBlockName("%entry");
+        $$ = block;
+    }
+    ;
+
+BlockItemList
+    : {
+        $$ = new BlockItemListAST();
+    }
+    | BlockItemList BlockItem {
+        $$ = new BlockItemListAST($1,$2);
+    }
+    ;
 
 Stmt
   : RETURN Exp ';' {
     $$ = new StmtAST($2);
   }
   ;
+
+Decl
+    : ConstDecl {
+        $$ = new DeclAST($1,true);
+    }
+    ;
+
+BlockItem
+    : Decl {
+        $$ = new BlockItemAST($1,true);
+    }
+    | Stmt {
+        $$ = new BlockItemAST($1,false);
+    }
+
 
 Number
   : INT_CONST {
@@ -199,8 +223,57 @@ PrimaryExp
     | '(' Exp ')' {
         $$ = new PrimaryExpAST2($2);
     }
+    | LVal {
+        $$ = new PrimaryExpAST3($1);
+    }
     ;
 
+
+ConstDecl
+    : "const" BType ConstDef ConstDefList ";" {
+        $$ = new ConstDeclAST($2, $3, $4);
+    }
+    ;
+
+ConstDefList
+    : {
+        $$ = new ConstDefListAST();
+    }
+    | ConstDefList "," ConstDef {
+        $$ = new ConstDefListAST($1,$3);
+    }
+    ;
+
+ConstDef
+    : IDENT "=" ConstInitVal{
+
+        $$ = new ConstDefAST($1,$3);
+    }
+    ;
+
+BType
+    : "int" {
+        $$ = new std::string("int");
+    }
+    ;
+
+ConstInitVal
+    : ConstExp{
+        $$ = new ConstInitValAST($1);
+    }
+    ;
+
+LVal
+    : IDENT {
+       $$ = $1;
+    }
+    ;
+
+ConstExp
+    : Exp{
+        $$ = new ConstExpAST($1);
+    }
+    ;
 
 
 

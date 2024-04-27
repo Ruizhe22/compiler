@@ -116,6 +116,10 @@ public:
     void spreadSymbolTable(){
         exp->symbolTable = symbolTable;
         exp->spreadSymbolTable();
+        if(exp->isNum){
+            isNum = true;
+            num = exp->num;
+        }
     }
 
 private:
@@ -177,12 +181,12 @@ public:
         if(temp->isDecl){
             std::shared_ptr<DeclAST> declPtr = std::dynamic_pointer_cast<DeclAST>(temp->item);
             symbolTable.merge(declPtr->symbolTable);
-            declPtr->symbolTable = symbolTable;
+            //declPtr->symbolTable = symbolTable;
         }
         else{
             std::shared_ptr<StmtAST> stmt = std::dynamic_pointer_cast<StmtAST>(temp->item);
-            stmt->symbolTable = symbolTable;
-            stmt->spreadSymbolTable();
+            //stmt->symbolTable = symbolTable;
+            //stmt->spreadSymbolTable();
         }
     }
 
@@ -229,6 +233,10 @@ class ExpBaseAST1: public ExpBaseAST{
 public:
     ExpBaseAST1(BaseAST *ast):ExpBaseAST(false),delegate(ast){
         name = delegate->name;
+        if(delegate->isNum){
+            isNum = true;
+            num = delegate->num;
+        }
     }
 
     void generateIR(std::ostream &os){
@@ -421,6 +429,9 @@ class UnaryExpAST1: public ExpBaseAST{
 public:
     UnaryExpAST1(BaseAST *ast):ExpBaseAST(false),primaryExp(ast){
         name = primaryExp->name;
+        if(primaryExp->isNum){
+            isNum = true;
+        }
     }
 
     void generateIR(std::ostream &os){

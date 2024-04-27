@@ -85,6 +85,15 @@ BlockItemList
     }
     ;
 
+BlockItem
+    : Decl {
+        $$ = new BlockItemAST($1,true);
+    }
+    | Stmt {
+        $$ = new BlockItemAST($1,false);
+    }
+    ;
+
 Stmt
   : RETURN Exp ';' {
     $$ = new StmtAST($2);
@@ -96,15 +105,6 @@ Decl
         $$ = new DeclAST($1,true);
     }
     ;
-
-BlockItem
-    : Decl {
-        $$ = new BlockItemAST($1,true);
-    }
-    | Stmt {
-        $$ = new BlockItemAST($1,false);
-    }
-
 
 Number
   : INT_CONST {

@@ -465,8 +465,7 @@ Function::Function(std::string namet):name(namet),sp(0)
 
 void Function::initRegSet()
 {
-    setUnallocReg.insert({"t0","t1","t2","t3","t4","t5","t6",
-                          "s1","s2","s3","s4","s5","s6","s7","s8","s9","s10","s11"});
+    setUnallocReg.insert({"t0","t1","t2","t3","t4","t5","t6"});
 }
 
 

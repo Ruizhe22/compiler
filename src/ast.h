@@ -16,12 +16,16 @@
 class SymbolInfo{
 public:
     SymbolInfo(std::string namet, std::string typet, bool isConstt, int constNumt)
-        :name(namet),type(typet),isNum(isConstt),constNum(constNumt){}
+        :name(namet),type(typet),isNum(isConstt),num(constNumt){}
+
+    SymbolInfo(std::string namet, std::string typet, bool isConstt)
+         :name(namet),type(typet),isNum(isConstt){}
 
     std::string name;
-    bool isNum;
     std::string type;
-    int constNum;
+    // isNum表示是不是const变量
+    bool isNum;
+    int num;
 };
 
 // 所有 AST 的基类
@@ -34,6 +38,7 @@ public:
     bool isNum = false;
     bool isID = false;
     int num;
+    std::string type = "i32";
     std::unordered_map<std::string, std::shared_ptr<SymbolInfo>> symbolTable;
 };
 
@@ -98,9 +103,9 @@ private:
     std::string type;
 };
 
-class StmtAST: public BaseAST {
+class StmtAST1: public BaseAST {
 public:
-    StmtAST(BaseAST *ast):exp(ast){}
+    StmtAST1(BaseAST *ast):exp(ast){}
 
     void generateIR(std::ostream &os){
         if(exp->isNum){
@@ -124,6 +129,32 @@ public:
 private:
     std::unique_ptr<BaseAST> exp;
 };
+
+class StmtAST2: public BaseAST {
+public:
+    StmtAST2(std::string *id, BaseAST *ast):exp(ast){
+        name = "@" + *id;
+    }
+
+    void generateIR(std::ostream &os){
+        if(exp->isNum){
+            os << "\tstore "<< exp->num << ", " << name <<"\n";
+        }
+        else{
+            exp->generateIR(os);
+            os << "\tstore "<< exp->name << ", " << name <<"\n";
+        }
+    }
+
+    void spreadSymbolTable(){
+        exp->symbolTable = symbolTable;
+        exp->spreadSymbolTable();
+    }
+
+private:
+    std::unique_ptr<BaseAST> exp;
+};
+
 
 class BlockAST: public BaseAST {
 public:
@@ -153,17 +184,26 @@ public:
         symbolTable = item-> symbolTable;
     }
 
+    void spreadSymbolTable(){
+        item->symbolTable = symbolTable;
+        item->spreadSymbolTable();
+        symbolTable.merge(item->symbolTable);
+    }
+
+
     void generateIR(std::ostream &os){
         item->generateIR(os);
     }
 
+    //item is a DeclAST or StmtAST
     std::shared_ptr<BaseAST> item;
     bool isDecl;
 };
 
 class DeclAST: public BaseAST{
 public:
-    DeclAST(BaseAST *declt, bool isconst):decl(declt),isNum(isconst){
+    DeclAST(BaseAST *declt, bool isconst):decl(declt){
+        isNum = isconst;
         symbolTable = decl->symbolTable;
     }
 
@@ -175,9 +215,13 @@ public:
         symbolTable = decl->symbolTable;
     }
 
+    void generateIR(std::ostream &os){
+        decl->generateIR(os);
+    }
+
 private:
+    // is a ConstDeclAST or a VarDeckAST
     std::shared_ptr<BaseAST> decl;
-    bool isNum;
 };
 
 
@@ -235,7 +279,7 @@ public:
         if(constInitVal->isNum){
             num = constInitVal->num;
             isNum = true;
-            symbolTable[name]->constNum = num;
+            symbolTable[name]->num = num;
         }
     }
 private:
@@ -244,8 +288,7 @@ private:
 
 class ConstDefListAST: public BaseAST{
 public:
-    ConstDefListAST() {
-    };
+    ConstDefListAST(BaseAST *def):defList(1,std::shared_ptr<BaseAST>(def)){};
     ConstDefListAST(BaseAST *list, BaseAST *def):defList(((ConstDefListAST *)list)->defList){
         defList.push_back(std::shared_ptr<ConstDefAST>((ConstDefAST *)def));
     }
@@ -255,21 +298,17 @@ public:
 
 class ConstDeclAST: public BaseAST{
 public:
-    ConstDeclAST(std::string *btype, BaseAST *def, BaseAST *list):type(*btype){
-        constDefList = ((ConstDefListAST *)list)->defList;
-        constDefList.push_front(std::shared_ptr<BaseAST>(def));
-        def->symbolTable[def->name] = std::make_shared<SymbolInfo>(def->name,type,true,def->num);
-        for(const auto &d : ((ConstDefListAST *)list)->defList){
+    ConstDeclAST(std::string *btype, BaseAST *list):type(*btype),constDefList(((ConstDefListAST *)list)->defList){
+        for(const auto &d : constDefList){
             d->symbolTable[d->name] = std::make_shared<SymbolInfo>(d->name,type,true,d->num);
+            d->type = type;
         }
-
     }
 
     void spreadSymbolTable(){
         // 先传下去 decl语句之前的符号表 对于每个新的符号
         for(const auto &cd : constDefList){
             cd->symbolTable.merge(symbolTable);
-            //std::cout<<"#### "<< cd->symbolTable["@a"]->constNum  << std::endl;
             cd->spreadSymbolTable();
             symbolTable = cd->symbolTable;
         }
@@ -280,6 +319,113 @@ private:
     std::deque<std::shared_ptr<BaseAST>> constDefList;
 };
 
+class InitValAST: public BaseAST{
+public:
+    InitValAST(BaseAST *expt):exp(expt){
+        name = exp->name;
+    }
+
+    void spreadSymbolTable(){
+        exp->symbolTable = symbolTable;
+        exp->spreadSymbolTable();
+        if(exp->isNum){
+            num = exp->num;
+            isNum = true;
+        }
+    }
+
+    void generateIR(std::ostream &os){
+        exp->generateIR(os);
+    }
+
+private:
+    std::unique_ptr<BaseAST> exp;
+};
+
+
+class VarDefAST: public BaseAST{
+public:
+    VarDefAST(std::string *id):isInit(false){
+        name = "@" + *id;
+        isNum = false;
+    }
+    VarDefAST(std::string *id, BaseAST *init):initVal(init),isInit(true){
+        name = "@" + *id;
+        isNum = false;
+    }
+
+    void spreadSymbolTable(){
+        if(isInit) {
+            initVal->symbolTable = symbolTable;
+            initVal->spreadSymbolTable();
+        }
+    }
+
+    void generateIR(std::ostream &os){
+        os << "\t" << name << " = alloc " << type << "\n";
+        if(isInit){
+            if(initVal->isNum){
+                os << "\tstore "<< initVal->num << ", " << name <<"\n";
+            }
+            else{
+                initVal->generateIR(os);
+                os << "\tstore "<< initVal->name << ", " << name <<"\n";
+            }
+        }
+    }
+
+private:
+    std::unique_ptr<BaseAST> initVal;
+    bool isInit;
+};
+
+//only used to construct VarDeclAST, not used after that
+class VarDefListAST: public BaseAST{
+public:
+    VarDefListAST(BaseAST *def):defList(1,std::shared_ptr<BaseAST>(def)){};
+    VarDefListAST(BaseAST *list, BaseAST *def):defList(((VarDefListAST *)list)->defList){
+        defList.push_back(std::shared_ptr<BaseAST>(def));
+    }
+
+    std::deque<std::shared_ptr<BaseAST>> defList;
+};
+
+
+
+class VarDeclAST: public BaseAST{
+public:
+    VarDeclAST(std::string *btype, BaseAST *list):varDefList(((VarDefListAST *)list)->defList){
+        type = *btype;
+        for(const auto &vd : varDefList){
+            vd->symbolTable[vd->name] = std::make_shared<SymbolInfo>(vd->name,type,false);
+            vd->type = type;
+        }
+    }
+
+    void generateIR(std::ostream &os){
+        for(const auto &vd : varDefList){
+            vd->generateIR(os);
+        }
+    }
+
+    void spreadSymbolTable(){
+        // 先传下去 decl语句之前的符号表 对于每个新的符号
+        for(const auto &vd : varDefList){
+            vd->symbolTable.merge(symbolTable);
+            vd->spreadSymbolTable();
+            symbolTable = vd->symbolTable;
+        }
+    }
+
+private:
+    std::deque<std::shared_ptr<BaseAST>> varDefList;
+};
+
+
+
+
+
+
 
 class BlockItemListAST: public BaseAST {
 public:
@@ -288,24 +434,10 @@ public:
         auto temp = (BlockItemAST *)blockItemTemp;
         itemList.push_back(temp->item);
         // update symbol table of item and item list
-        if(temp->isDecl){
-            //std::cout << "###" <<std::endl<< symbolTable["@a"]->constNum << std::endl;
-            symbolTable.merge(((BlockItemListAST *)blockItemsTemp)->symbolTable);
-            std::shared_ptr<DeclAST> decl = std::dynamic_pointer_cast<DeclAST>(temp->item);
-            decl->symbolTable = symbolTable;
-            decl->spreadSymbolTable();
-            symbolTable.merge(decl->symbolTable);
-
-
-        }
-        else{
-            symbolTable.merge(temp->symbolTable);
-            symbolTable.merge(((BlockItemListAST *)blockItemsTemp)->symbolTable);
-            std::shared_ptr<StmtAST> stmt = std::dynamic_pointer_cast<StmtAST>(temp->item);
-            stmt->symbolTable = symbolTable;
-            stmt->spreadSymbolTable();
-        }
-
+        symbolTable.merge(((BlockItemListAST *)blockItemsTemp)->symbolTable);
+        temp->symbolTable = symbolTable;
+        temp->spreadSymbolTable();
+        symbolTable.merge(temp->symbolTable);
     }
 
     void generateIR(std::ostream &os){
@@ -336,6 +468,7 @@ public:
             isNum = true;
             num = lOrExp->num;
         }
+        name = lOrExp->name;
     }
 
 private:
@@ -360,6 +493,7 @@ public:
             isNum = true;
             num = delegate->num;
         }
+        name = delegate->name;
     }
 
 private:
@@ -562,12 +696,8 @@ public:
             isNum = true;
             num = primaryExp->num;
         }
-        /*
-         else if(primaryExp->isID){
-            // in symbol table not const id
+        name = primaryExp->name;
 
-        }
-         */
     }
 
 private:
@@ -666,7 +796,7 @@ private:
 class PrimaryExpAST3: public BaseAST{
 public:
     // although false and without explictly assign its name, no exp will invoke its name.
-    PrimaryExpAST3(std::string *id){
+    PrimaryExpAST3(std::string *id):ident("@" + *id){
         name = "@"+ *id;
         isID = true;
     }
@@ -675,10 +805,22 @@ public:
         std::shared_ptr<SymbolInfo> symbol = symbolTable[name];
         if(symbol->isNum){
             isNum = true;
-            num = symbol->constNum;
+            num = symbol->num;
+        }
+        else{
+            name = "%"+std::to_string(++ExpBaseAST::expNum);
         }
         return;
     }
+
+    void generateIR(std::ostream &os){
+        if(!isNum){
+            os << "\t"<< name << " = load " << ident <<"\n";
+        }
+    }
+private:
+    std::string ident;
+
 };
 
 

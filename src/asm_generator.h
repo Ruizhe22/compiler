@@ -12,13 +12,42 @@
 #include <sstream>
 #include <unordered_map>
 #include <set>
+#include <memory>
 #include "koopa.h"
+
+class Function{
+public:
+    Function(std::string namet);
+
+    Function();
+
+private:
+    std::string name;
+    // koopa var to register t0 - t6
+    std::unordered_map<koopa_raw_value_t, std::string> mapAllocReg;
+    // 相较于fp，为负数
+    int sp;
+    // unalloc register
+    std::set<std::string> setUnallocReg;
+    void initRegSet();
+
+public:
+    // 相较于fp，为负数
+    std::unordered_map<koopa_raw_value_t, int> mapAllocMem;
+    std::string allocReg(const koopa_raw_value_t &);
+    std::string allocReg();
+    void restoreReg(const std::string &);
+    // for some value which is not unit, alloc memory, update mapAllocMem and esp
+    int allocMem(const koopa_raw_value_t &);
+};
+
 
 class AsmGenerator{
 public:
     AsmGenerator(std::stringstream &ss, std::ostream &os);
     void generateRiscv();
-
+    std::shared_ptr<Function> currentFunciton;
+    std::unordered_map<std::string, std::shared_ptr<Function>> mapFunction;
 private:
     std::stringstream &koopa;
     std::ostream &fos;
@@ -30,14 +59,9 @@ private:
     void retHandler(const koopa_raw_value_t &value);
     void integerHandler(const koopa_raw_value_t &value);
     void binaryHander(const koopa_raw_value_t &value);
-    // koopa var to register t0 - t6
-    std::unordered_map<koopa_raw_value_t, std::string> mapAllocReg;
-    // unalloc register
-    std::set<std::string> setUnallocReg;
-    void initRegSet();
-    std::string allocReg(const koopa_raw_value_t &);
-    std::string allocReg();
-    void restoreReg(const std::string &);
+    void allocHander(const koopa_raw_value_t &value);
+    void loadHander(const koopa_raw_value_t &value);
+    void storeHander(const koopa_raw_value_t &value);
 
 };
 

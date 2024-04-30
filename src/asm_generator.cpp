@@ -73,51 +73,19 @@ void AsmGenerator::visitRawSlice(const koopa_raw_slice_t &slice)
     }
 }
 
-void AsmGenerator::initRegSet()
-{
-    setUnallocReg.insert({"t0","t1","t2","t3","t4","t5","t6",
-                          "s1","s2","s3","s4","s5","s6","s7","s8","s9","s10","s11"});
-}
-
-std::string AsmGenerator::allocReg(const koopa_raw_value_t &value)
-{
-    if(setUnallocReg.empty()) assert(false);
-
-    if(mapAllocReg.find(value)!=mapAllocReg.end()){
-        return mapAllocReg[value];
-    }
-    else{
-        mapAllocReg[value] = *setUnallocReg.begin();
-        // if s0-s11, callee saved.
-        setUnallocReg.erase(setUnallocReg.begin());
-        return mapAllocReg[value];
-    }
-}
-
-// 临时，只用一次
-std::string AsmGenerator::allocReg()
-{
-    if(setUnallocReg.empty()) assert(false);
-    auto temp = *setUnallocReg.begin();
-    setUnallocReg.erase(setUnallocReg.begin());
-    return temp;
-}
-
-void AsmGenerator::restoreReg(const std::string &reg)
-{
-    setUnallocReg.insert(reg);
-}
 
 // 访问函数
 void AsmGenerator::visitRawFunction(const koopa_raw_function_t &func)
 {
     // 执行一些其他的必要操作
-    initRegSet();
+    currentFunciton = std::make_shared<Function>();
     if(func->name){
         std::string funcName = func->name + 1;
         fos << funcName << ":\n";
+        mapFunction[funcName] = currentFunciton;
     }
-
+    // 更新帧指针
+    fos << "\tmv fp, sp" << "\n";
     // 访问所有基本块
     visitRawSlice(func->bbs);
 }
@@ -136,6 +104,7 @@ void AsmGenerator::visitRawBlock(const koopa_raw_basic_block_t &bb)
 // 访问指令
 void AsmGenerator::visitRawValue(const koopa_raw_value_t &value)
 {
+    // 读取一条指令
     // 根据指令类型判断后续需要如何访问
     const auto &kind = value->kind;
     switch (kind.tag) {
@@ -151,6 +120,16 @@ void AsmGenerator::visitRawValue(const koopa_raw_value_t &value)
             // 访问二元运算
             binaryHander(value);
             break;
+        case KOOPA_RVT_ALLOC:
+            allocHander(value);
+            break;
+        case KOOPA_RVT_LOAD:
+            loadHander(value);
+            break;
+        case KOOPA_RVT_STORE:
+            storeHander(value);
+            break;
+
         default:
             // 其他类型暂时遇不到
             assert(false);
@@ -165,17 +144,14 @@ void AsmGenerator::retHandler(const koopa_raw_value_t &value)
     switch (kind.tag) {
         case KOOPA_RVT_INTEGER:
             fos << "\tli a0, " << kind.data.integer.value << "\n";
-            fos << "\tret\n";
             break;
-        case KOOPA_RVT_BINARY:
-            fos << "\tmv a0, " << allocReg(inst.value) << "\n";
-            fos << "\tret\n";
-            break;
-
         default:
-            // 其他类型暂时遇不到
-            assert(false);
+            fos << "\tlw a0," << currentFunciton->mapAllocMem[inst.value] <<"(fp)\n";
+            //assert(false);
     }
+    fos << "\tmv sp, fp" << "\n";
+    fos << "\tret\n";
+
 }
 
 void AsmGenerator::integerHandler(const koopa_raw_value_t &value)
@@ -189,8 +165,10 @@ void AsmGenerator::binaryHander(const koopa_raw_value_t &value){
     std::string leftReg, rightReg, expReg;
     koopa_raw_value_t leftValue = inst.lhs;
     koopa_raw_value_t rightValue = inst.rhs;
+    // 分配临时寄存器
+    expReg = currentFunciton->allocReg();
+    int dst = currentFunciton->allocMem(value);
 
-    expReg = allocReg(value);
     if(leftValue->kind.tag == KOOPA_RVT_INTEGER && rightValue->kind.tag == KOOPA_RVT_INTEGER){
         switch(inst.op){
             /// Not equal to.
@@ -312,37 +290,34 @@ void AsmGenerator::binaryHander(const koopa_raw_value_t &value){
                     << "\n";
                 break;
         }
+
+        fos << "\tsw " << expReg << ", " << dst <<"(fp)\n";
+
+        currentFunciton->restoreReg(expReg);
     }
     else {
+        leftReg = currentFunciton->allocReg();
         switch (leftValue->kind.tag) {
             case KOOPA_RVT_INTEGER:
-                leftReg = allocReg();
                 fos << "\tli " + leftReg + ", " << leftValue->kind.data.integer.value << "\n";
                 break;
-            case KOOPA_RVT_BINARY:
-                leftReg = allocReg(leftValue);
-                break;
             default:
-                assert(false);
+                fos << "\tlw " << leftReg << ", " << currentFunciton->mapAllocMem[leftValue] <<"(fp)\n";
+
         }
 
+        rightReg = currentFunciton->allocReg();
         switch (rightValue->kind.tag) {
             case KOOPA_RVT_INTEGER:
-                rightReg = allocReg();
                 fos << "\tli " + rightReg + ", " << rightValue->kind.data.integer.value << "\n";
                 break;
-            case KOOPA_RVT_BINARY:
-                rightReg = allocReg(rightValue);
-                break;
             default:
-                assert(false);
+                fos << "\tlw " << rightReg << ", " << currentFunciton->mapAllocMem[rightValue] <<"(fp)\n";
+
         }
 
         // conserve reg
-        if (leftValue->kind.tag == KOOPA_RVT_INTEGER) restoreReg(leftReg);
-        if (rightValue->kind.tag == KOOPA_RVT_INTEGER) restoreReg(rightReg);
-
-        std::string tempReg = allocReg();
+        std::string tempReg = currentFunciton->allocReg();
 
         switch (inst.op) {
             /// Not equal to.
@@ -432,11 +407,100 @@ void AsmGenerator::binaryHander(const koopa_raw_value_t &value){
                 fos << "\tsra " + expReg + ", " << leftReg << ", " << rightReg << "\n";
                 break;
         }
-        restoreReg(tempReg);
+        currentFunciton->restoreReg(tempReg);
+        currentFunciton->restoreReg(leftReg);
+        currentFunciton->restoreReg(rightReg);
+        fos << "\tsw " << expReg << ", " << dst <<"(fp)\n";
+        currentFunciton->restoreReg(expReg);
     }
 
-    //if(leftValue->kind.tag != KOOPA_RVT_INTEGER) restoreReg(leftReg);
-    //if(rightValue->kind.tag != KOOPA_RVT_INTEGER) restoreReg(rightReg);
+    //if(leftValue->kind.tag != KOOPA_RVT_INTEGER) currentFunciton->restoreReg(leftReg);
+    //if(rightValue->kind.tag != KOOPA_RVT_INTEGER) currentFunciton->restoreReg(rightReg);
 
     return;
+}
+
+void AsmGenerator::allocHander(const koopa_raw_value_t &value)
+{
+    currentFunciton->allocMem(value);
+}
+
+void AsmGenerator::loadHander(const koopa_raw_value_t &value)
+{
+    koopa_raw_load_t inst = value->kind.data.load;
+    int src = currentFunciton->mapAllocMem[inst.src];
+    int dst = currentFunciton->allocMem(value);
+    std::string tempReg = currentFunciton->allocReg();
+    fos << "\tlw " << tempReg << ", " << src <<"(fp)\n";
+    fos << "\tsw " << tempReg << ", " << dst <<"(fp)\n";
+    currentFunciton->restoreReg(tempReg);
+}
+
+void AsmGenerator::storeHander(const koopa_raw_value_t &value)
+{
+    koopa_raw_store_t inst = value->kind.data.store;
+    koopa_raw_value_t src = inst.value;
+    koopa_raw_value_t dst = inst.dest;
+    std::string tempReg = currentFunciton->allocReg();
+    if(src->kind.tag == KOOPA_RVT_INTEGER){
+        fos << "\tli " << tempReg << ", " << src->kind.data.integer.value << "\n";
+    }
+    else{
+        fos << "\tlw " << tempReg << ", " << currentFunciton->mapAllocMem[src] <<"(fp)\n";
+    }
+    fos << "\tsw " << tempReg << ", " << currentFunciton->mapAllocMem[dst] <<"(fp)\n";
+    currentFunciton->restoreReg(tempReg);
+}
+
+
+Function::Function():sp(0)
+{
+    initRegSet();
+}
+
+Function::Function(std::string namet):name(namet),sp(0)
+{
+    initRegSet();
+}
+
+void Function::initRegSet()
+{
+    setUnallocReg.insert({"t0","t1","t2","t3","t4","t5","t6",
+                          "s1","s2","s3","s4","s5","s6","s7","s8","s9","s10","s11"});
+}
+
+
+std::string Function::allocReg(const koopa_raw_value_t &value)
+{
+    if(setUnallocReg.empty()) assert(false);
+
+    if(mapAllocReg.find(value)!=mapAllocReg.end()){
+        return mapAllocReg[value];
+    }
+    else{
+        mapAllocReg[value] = *setUnallocReg.begin();
+        // if s0-s11, callee saved.
+        setUnallocReg.erase(setUnallocReg.begin());
+        return mapAllocReg[value];
+    }
+}
+
+// 临时，只用一次
+std::string Function::allocReg()
+{
+    if(setUnallocReg.empty()) assert(false);
+    auto temp = *setUnallocReg.begin();
+    setUnallocReg.erase(setUnallocReg.begin());
+    return temp;
+}
+
+void Function::restoreReg(const std::string &reg)
+{
+    setUnallocReg.insert(reg);
+}
+
+int Function::allocMem(const koopa_raw_value_t &value)
+{
+    sp-=4;
+    return (mapAllocMem[value] = sp);
 }

@@ -332,6 +332,10 @@ public:
             num = exp->num;
             isNum = true;
         }
+        else{
+            isNum = false;
+            name = exp->name;
+        }
     }
 
     void generateIR(std::ostream &os){
@@ -468,7 +472,10 @@ public:
             isNum = true;
             num = lOrExp->num;
         }
-        name = lOrExp->name;
+        else{
+            isNum = false;
+            name = lOrExp->name;
+        }
     }
 
 private:
@@ -493,7 +500,10 @@ public:
             isNum = true;
             num = delegate->num;
         }
-        name = delegate->name;
+        else{
+            isNum = false;
+            name = delegate->name;
+        }
     }
 
 private:
@@ -543,7 +553,8 @@ public:
             if(op =="eq") { num = left->num == right->num; }
             if(op =="ne") { num = left->num != right->num; }
         }
-        else if(allocNewName){
+        else {
+            isNum = false;
             name = "%"+std::to_string(++ExpBaseAST::expNum);
         }
     }
@@ -598,7 +609,8 @@ public:
             isNum = true;
             num = left->num || right->num;
         }
-        else if(allocNewName){
+        else {
+            isNum = false;
             name = "%"+std::to_string(++ExpBaseAST::expNum);
         }
     }
@@ -653,7 +665,8 @@ public:
             isNum = true;
             num = left->num && right->num;
         }
-        else if(allocNewName){
+        else {
+            isNum = false;
             name = "%"+std::to_string(++ExpBaseAST::expNum);
         }
     }
@@ -696,7 +709,10 @@ public:
             isNum = true;
             num = primaryExp->num;
         }
-        name = primaryExp->name;
+        else{
+            isNum = false;
+            name = primaryExp->name;
+        }
 
     }
 
@@ -711,6 +727,7 @@ public:
     void generateIR(std::ostream &os){
         if(op=="not") op = "eq";
         if(unaryExp->isNum){
+            // no use
             if(op != "add") {
                 os << "\t" << name << "= " << op << " 0, " << unaryExp->num << "\n";
             }
@@ -719,9 +736,6 @@ public:
             unaryExp->generateIR(os);
             if(op != "add") {
                 os << "\t" << name << "= " << op << " 0, " << unaryExp->name << "\n";
-            }
-            else if(allocNewName){
-                name = "%"+std::to_string(++ExpBaseAST::expNum);
             }
         }
 
@@ -742,6 +756,13 @@ public:
                 num = (0==unaryExp->num);
             }
         }
+        else {
+            if (op != "add") {
+                name = "%" + std::to_string(++ExpBaseAST::expNum);
+            } else {
+                name = unaryExp->name;
+            }
+        }
     }
 
 private:
@@ -755,10 +776,6 @@ public:
     PrimaryExpAST1(int n):ExpBaseAST(false){
         isNum = true;
         num = n ;
-    }
-
-    void generateIR(std::ostream &os){
-        os << "\t" << name << "= add 0, " << num << "\n";
     }
 
     void spreadSymbolTable(){
@@ -787,6 +804,7 @@ public:
             isNum = true;
             num = exp->num;
         }
+        else name = exp->name;
     }
 
 private:
@@ -808,6 +826,7 @@ public:
             num = symbol->num;
         }
         else{
+            isNum = false;
             name = "%"+std::to_string(++ExpBaseAST::expNum);
         }
         return;

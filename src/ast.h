@@ -72,7 +72,7 @@ public:
 class FuncDefAST : public BaseAST {
 public:
     FuncDefAST(BaseAST *ft, std::string *s, BaseAST *b):
-            func_type(ft), name("@func_" + *s), block(b){
+            func_type(ft), name("@" + *s), block(b){
         // exp restart to count from 0 in a new func
         ExpBaseAST::expNum = 0;
     }

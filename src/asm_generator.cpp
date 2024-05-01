@@ -168,251 +168,124 @@ void AsmGenerator::binaryHander(const koopa_raw_value_t &value){
     // 分配临时寄存器
     expReg = currentFunciton->allocReg();
     int dst = currentFunciton->allocMem(value);
+    
+    leftReg = currentFunciton->allocReg();
+    switch (leftValue->kind.tag) {
+        case KOOPA_RVT_INTEGER:
+            fos << "\tli " + leftReg + ", " << leftValue->kind.data.integer.value << "\n";
+            break;
+        default:
+            fos << "\tlw " << leftReg << ", " << currentFunciton->mapAllocMem[leftValue] <<"(fp)\n";
 
-    if(leftValue->kind.tag == KOOPA_RVT_INTEGER && rightValue->kind.tag == KOOPA_RVT_INTEGER){
-        switch(inst.op){
-            /// Not equal to.
-            case KOOPA_RBO_NOT_EQ:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value != rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Equal to.
-            case KOOPA_RBO_EQ:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value == rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Greater than.
-            case KOOPA_RBO_GT:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value > rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Less than.
-            case KOOPA_RBO_LT:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value < rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Greater than or equal to.
-            case KOOPA_RBO_GE:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value >= rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Less than or equal to.
-            case KOOPA_RBO_LE:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value <= rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Addition.
-            case KOOPA_RBO_ADD:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value + rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Subtraction.
-            case KOOPA_RBO_SUB:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value - rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Multiplication.
-            case KOOPA_RBO_MUL:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value * rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Division.
-            case KOOPA_RBO_DIV:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value / rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Modulo.
-            case KOOPA_RBO_MOD:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value % rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Bitwise AND.
-            case KOOPA_RBO_AND:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value & rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Bitwise OR.
-            case KOOPA_RBO_OR:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value | rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Bitwise XOR.
-            case KOOPA_RBO_XOR:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value ^ rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Shift left logical.
-            case KOOPA_RBO_SHL:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value << rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Shift right logical.
-            case KOOPA_RBO_SHR:
-                fos << "\tli "+ expReg + ", "
-                    << ((unsigned )leftValue->kind.data.integer.value >> rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-
-                /// Shift right arithmetic.
-            case KOOPA_RBO_SAR:
-                fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value >> rightValue->kind.data.integer.value)
-                    << "\n";
-                break;
-        }
-
-        fos << "\tsw " << expReg << ", " << dst <<"(fp)\n";
-
-        currentFunciton->restoreReg(expReg);
     }
-    else {
-        leftReg = currentFunciton->allocReg();
-        switch (leftValue->kind.tag) {
-            case KOOPA_RVT_INTEGER:
-                fos << "\tli " + leftReg + ", " << leftValue->kind.data.integer.value << "\n";
-                break;
-            default:
-                fos << "\tlw " << leftReg << ", " << currentFunciton->mapAllocMem[leftValue] <<"(fp)\n";
 
-        }
+    rightReg = currentFunciton->allocReg();
+    switch (rightValue->kind.tag) {
+        case KOOPA_RVT_INTEGER:
+            fos << "\tli " + rightReg + ", " << rightValue->kind.data.integer.value << "\n";
+            break;
+        default:
+            fos << "\tlw " << rightReg << ", " << currentFunciton->mapAllocMem[rightValue] <<"(fp)\n";
 
-        rightReg = currentFunciton->allocReg();
-        switch (rightValue->kind.tag) {
-            case KOOPA_RVT_INTEGER:
-                fos << "\tli " + rightReg + ", " << rightValue->kind.data.integer.value << "\n";
-                break;
-            default:
-                fos << "\tlw " << rightReg << ", " << currentFunciton->mapAllocMem[rightValue] <<"(fp)\n";
-
-        }
-
-        // conserve reg
-        std::string tempReg = currentFunciton->allocReg();
-
-        switch (inst.op) {
-            /// Not equal to.
-            case KOOPA_RBO_NOT_EQ:
-                fos << "\txor " + tempReg + ", " << leftReg << ", " << rightReg << "\n";
-                fos << "\tsnez " + expReg + ", " << tempReg << "\n";
-                break;
-
-                /// Equal to.
-            case KOOPA_RBO_EQ:
-                fos << "\txor " + tempReg + ", " << leftReg << ", " << rightReg << "\n";
-                fos << "\tseqz " + expReg + ", " << tempReg << "\n";
-                break;
-
-                /// Greater than.
-            case KOOPA_RBO_GT:
-                fos << "\tsgt " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Less than.
-            case KOOPA_RBO_LT:
-                fos << "\tslt " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Greater than or equal to.
-            case KOOPA_RBO_GE:
-                fos << "\tslt " + expReg + ", " << rightReg << ", " << leftReg << "\n";
-                break;
-
-                /// Less than or equal to.
-            case KOOPA_RBO_LE:
-                fos << "\tsgt " + expReg + ", " << rightReg << ", " << leftReg << "\n";
-                break;
-
-                /// Addition.
-            case KOOPA_RBO_ADD:
-                fos << "\tadd " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Subtraction.
-            case KOOPA_RBO_SUB:
-                fos << "\tsub " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Multiplication.
-            case KOOPA_RBO_MUL:
-                fos << "\tmul " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Division.
-            case KOOPA_RBO_DIV:
-                fos << "\tdiv " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Modulo.
-            case KOOPA_RBO_MOD:
-                fos << "\trem " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Bitwise AND.
-            case KOOPA_RBO_AND:
-                fos << "\tand " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Bitwise OR.
-            case KOOPA_RBO_OR:
-                fos << "\tor " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Bitwise XOR.
-            case KOOPA_RBO_XOR:
-                fos << "\txor " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Shift left logical.
-            case KOOPA_RBO_SHL:
-                fos << "\tsll " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Shift right logical.
-            case KOOPA_RBO_SHR:
-                fos << "\tsrl " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-
-                /// Shift right arithmetic.
-            case KOOPA_RBO_SAR:
-                fos << "\tsra " + expReg + ", " << leftReg << ", " << rightReg << "\n";
-                break;
-        }
-        currentFunciton->restoreReg(tempReg);
-        currentFunciton->restoreReg(leftReg);
-        currentFunciton->restoreReg(rightReg);
-        fos << "\tsw " << expReg << ", " << dst <<"(fp)\n";
-        currentFunciton->restoreReg(expReg);
     }
+
+    // conserve reg
+    std::string tempReg = currentFunciton->allocReg();
+
+    switch (inst.op) {
+        /// Not equal to.
+        case KOOPA_RBO_NOT_EQ:
+            fos << "\txor " + tempReg + ", " << leftReg << ", " << rightReg << "\n";
+            fos << "\tsnez " + expReg + ", " << tempReg << "\n";
+            break;
+
+            /// Equal to.
+        case KOOPA_RBO_EQ:
+            fos << "\txor " + tempReg + ", " << leftReg << ", " << rightReg << "\n";
+            fos << "\tseqz " + expReg + ", " << tempReg << "\n";
+            break;
+
+            /// Greater than.
+        case KOOPA_RBO_GT:
+            fos << "\tsgt " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Less than.
+        case KOOPA_RBO_LT:
+            fos << "\tslt " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Greater than or equal to.
+        case KOOPA_RBO_GE:
+            fos << "\tslt " + expReg + ", " << rightReg << ", " << leftReg << "\n";
+            break;
+
+            /// Less than or equal to.
+        case KOOPA_RBO_LE:
+            fos << "\tsgt " + expReg + ", " << rightReg << ", " << leftReg << "\n";
+            break;
+
+            /// Addition.
+        case KOOPA_RBO_ADD:
+            fos << "\tadd " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Subtraction.
+        case KOOPA_RBO_SUB:
+            fos << "\tsub " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Multiplication.
+        case KOOPA_RBO_MUL:
+            fos << "\tmul " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Division.
+        case KOOPA_RBO_DIV:
+            fos << "\tdiv " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Modulo.
+        case KOOPA_RBO_MOD:
+            fos << "\trem " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Bitwise AND.
+        case KOOPA_RBO_AND:
+            fos << "\tand " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Bitwise OR.
+        case KOOPA_RBO_OR:
+            fos << "\tor " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Bitwise XOR.
+        case KOOPA_RBO_XOR:
+            fos << "\txor " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Shift left logical.
+        case KOOPA_RBO_SHL:
+            fos << "\tsll " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Shift right logical.
+        case KOOPA_RBO_SHR:
+            fos << "\tsrl " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+
+            /// Shift right arithmetic.
+        case KOOPA_RBO_SAR:
+            fos << "\tsra " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            break;
+    }
+    currentFunciton->restoreReg(tempReg);
+    currentFunciton->restoreReg(leftReg);
+    currentFunciton->restoreReg(rightReg);
+    fos << "\tsw " << expReg << ", " << dst <<"(fp)\n";
+    currentFunciton->restoreReg(expReg);
+
 
     //if(leftValue->kind.tag != KOOPA_RVT_INTEGER) currentFunciton->restoreReg(leftReg);
     //if(rightValue->kind.tag != KOOPA_RVT_INTEGER) currentFunciton->restoreReg(rightReg);

@@ -72,7 +72,7 @@ public:
 class FuncDefAST : public BaseAST {
 public:
     FuncDefAST(BaseAST *ft, std::string *s, BaseAST *b):
-            func_type(ft), name("@" + *s), block(b){
+            func_type(ft), name("@func_" + *s), block(b){
         // exp restart to count from 0 in a new func
         ExpBaseAST::expNum = 0;
     }
@@ -133,7 +133,7 @@ private:
 class StmtAST2: public BaseAST {
 public:
     StmtAST2(std::string *id, BaseAST *ast):exp(ast){
-        name = "@_" + *id;
+        name = "@var_" + *id;
     }
 
     void generateIR(std::ostream &os){
@@ -158,17 +158,15 @@ private:
 
 class BlockAST: public BaseAST {
 public:
+    static int blockNum;
     BlockAST(BaseAST *ast):BlockItemListAST(ast){
         //update child block symbol table
+        name = "%block_" + std::to_string(blockNum++);
     }
 
     void generateIR(std::ostream &os){
         os << name <<":\n";
         BlockItemListAST->generateIR(os);
-    }
-
-    void assignBlockName(std::string name_t){
-        name = name_t;
     }
 
 private:
@@ -269,7 +267,7 @@ private:
 class ConstDefAST: public BaseAST{
 public:
     ConstDefAST(std::string *id, BaseAST *val):constInitVal(val){
-        name = "@_" + *id;
+        name = "@var_" + *id;
         num = constInitVal->num;
         isNum = constInitVal->isNum;
     }
@@ -350,11 +348,11 @@ private:
 class VarDefAST: public BaseAST{
 public:
     VarDefAST(std::string *id):isInit(false){
-        name = "@_" + *id;
+        name = "@var_" + *id;
         isNum = false;
     }
     VarDefAST(std::string *id, BaseAST *init):initVal(init),isInit(true){
-        name = "@_" + *id;
+        name = "@var_" + *id;
         isNum = false;
     }
 
@@ -555,7 +553,7 @@ public:
         }
         else {
             isNum = false;
-            name = "%_"+std::to_string(++ExpBaseAST::expNum);
+            name = "%temp_"+std::to_string(++ExpBaseAST::expNum);
         }
     }
 
@@ -611,7 +609,7 @@ public:
         }
         else {
             isNum = false;
-            name = "%_"+std::to_string(++ExpBaseAST::expNum);
+            name = "%temp_"+std::to_string(++ExpBaseAST::expNum);
         }
     }
 
@@ -667,7 +665,7 @@ public:
         }
         else {
             isNum = false;
-            name = "%_"+std::to_string(++ExpBaseAST::expNum);
+            name = "%temp_"+std::to_string(++ExpBaseAST::expNum);
         }
     }
 
@@ -758,7 +756,7 @@ public:
         }
         else {
             if (op != "add") {
-                name = "%_" + std::to_string(++ExpBaseAST::expNum);
+                name = "%temp_" + std::to_string(++ExpBaseAST::expNum);
             } else {
                 name = unaryExp->name;
             }
@@ -814,8 +812,8 @@ private:
 class PrimaryExpAST3: public BaseAST{
 public:
     // although false and without explictly assign its name, no exp will invoke its name.
-    PrimaryExpAST3(std::string *id):ident("@_" + *id){
-        name = "@_"+ *id;
+    PrimaryExpAST3(std::string *id):ident("@var_" + *id){
+        name = "@var_"+ *id;
         isID = true;
     }
 
@@ -827,7 +825,7 @@ public:
         }
         else{
             isNum = false;
-            name = "%_"+std::to_string(++ExpBaseAST::expNum);
+            name = "%temp_"+std::to_string(++ExpBaseAST::expNum);
         }
         return;
     }

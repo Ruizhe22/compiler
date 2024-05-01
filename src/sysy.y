@@ -71,7 +71,6 @@ FuncType
 Block
     : '{' BlockItemList '}' {
         auto block = new BlockAST($2);
-        block->assignBlockName("%entry");
         $$ = block;
     }
     ;

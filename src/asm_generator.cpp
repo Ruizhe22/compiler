@@ -33,7 +33,7 @@ void AsmGenerator::rawHandler(const koopa_raw_program_t &raw)
 {
     // 执行一些其他的必要操作
     fos << "\t.text\n"
-           "\t.globl main\n" ;
+           "\t.globl func_main\n" ;
     // 访问所有全局变量
     visitRawSlice(raw.values);
     // 访问所有函数

@@ -223,7 +223,7 @@ void AsmGenerator::binaryHander(const koopa_raw_value_t &value){
 
             /// Less than or equal to.
         case KOOPA_RBO_LE:
-            fos << "\tslt " + expReg + ", " << leftReg << ", " << rightReg << "\n";
+            fos << "\tsgt " + expReg + ", " << leftReg << ", " << rightReg << "\n";
             fos << "\tseqz " + expReg + ", " << expReg << "\n";
             break;
 

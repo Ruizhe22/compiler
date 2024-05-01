@@ -279,14 +279,14 @@ void AsmGenerator::binaryHander(const koopa_raw_value_t &value){
                 /// Shift right logical.
             case KOOPA_RBO_SHR:
                 fos << "\tli "+ expReg + ", "
-                    << ((unsigned )leftValue->kind.data.integer.value >> rightValue->kind.data.integer.value)
+                    << (((unsigned )leftValue->kind.data.integer.value) >> rightValue->kind.data.integer.value)
                     << "\n";
                 break;
 
                 /// Shift right arithmetic.
             case KOOPA_RBO_SAR:
                 fos << "\tli "+ expReg + ", "
-                    << (leftValue->kind.data.integer.value >> rightValue->kind.data.integer.value)
+                    << (((int)leftValue->kind.data.integer.value) >> rightValue->kind.data.integer.value)
                     << "\n";
                 break;
         }

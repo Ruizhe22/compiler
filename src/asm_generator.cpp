@@ -279,14 +279,14 @@ void AsmGenerator::binaryHander(const koopa_raw_value_t &value){
                 /// Shift right logical.
             case KOOPA_RBO_SHR:
                 fos << "\tli "+ expReg + ", "
-                    << (((unsigned )leftValue->kind.data.integer.value) >> rightValue->kind.data.integer.value)
+                    << ((unsigned )leftValue->kind.data.integer.value >> rightValue->kind.data.integer.value)
                     << "\n";
                 break;
 
                 /// Shift right arithmetic.
             case KOOPA_RBO_SAR:
                 fos << "\tli "+ expReg + ", "
-                    << (((int)leftValue->kind.data.integer.value) >> rightValue->kind.data.integer.value)
+                    << (leftValue->kind.data.integer.value >> rightValue->kind.data.integer.value)
                     << "\n";
                 break;
         }
@@ -431,7 +431,15 @@ void AsmGenerator::loadHander(const koopa_raw_value_t &value)
     int src = currentFunciton->mapAllocMem[inst.src];
     int dst = currentFunciton->allocMem(value);
     std::string tempReg = currentFunciton->allocReg();
-    fos << "\tlw " << tempReg << ", " << src <<"(fp)\n";
+    switch(inst.src->kind.tag){
+        case KOOPA_RVT_ALLOC:
+            fos << "\tlw " << tempReg << ", " << src <<"(fp)\n";
+            break;
+        default:
+            fos << "\tlw " << tempReg << ", " << src <<"(fp)\n";
+            fos << "\tlw " << tempReg << ", 0(" << tempReg << ")\n";
+    }
+
     fos << "\tsw " << tempReg << ", " << dst <<"(fp)\n";
     currentFunciton->restoreReg(tempReg);
 }
@@ -441,15 +449,28 @@ void AsmGenerator::storeHander(const koopa_raw_value_t &value)
     koopa_raw_store_t inst = value->kind.data.store;
     koopa_raw_value_t src = inst.value;
     koopa_raw_value_t dst = inst.dest;
-    std::string tempReg = currentFunciton->allocReg();
+    std::string stempReg = currentFunciton->allocReg();
+    std::string dtempReg = currentFunciton->allocReg();
+
     if(src->kind.tag == KOOPA_RVT_INTEGER){
-        fos << "\tli " << tempReg << ", " << src->kind.data.integer.value << "\n";
+        fos << "\tli " << stempReg << ", " << src->kind.data.integer.value << "\n";
     }
     else{
-        fos << "\tlw " << tempReg << ", " << currentFunciton->mapAllocMem[src] <<"(fp)\n";
+        fos << "\tlw " << stempReg << ", " << currentFunciton->mapAllocMem[src] <<"(fp)\n";
     }
-    fos << "\tsw " << tempReg << ", " << currentFunciton->mapAllocMem[dst] <<"(fp)\n";
-    currentFunciton->restoreReg(tempReg);
+
+    switch(dst->kind.tag){
+        case KOOPA_RVT_ALLOC:
+            fos << "\tsw " << stempReg << ", " << currentFunciton->mapAllocMem[dst] <<"(fp)\n";
+            break;
+        default:
+            fos << "\tlw " << dtempReg << ", " << currentFunciton->mapAllocMem[dst] <<"(fp)\n";
+            fos << "\tsw " << stempReg << ", 0(" << dtempReg << ")\n";
+
+    }
+
+    currentFunciton->restoreReg(stempReg);
+    currentFunciton->restoreReg(dtempReg);
 }
 
 

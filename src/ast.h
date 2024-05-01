@@ -555,7 +555,7 @@ public:
         }
         else {
             isNum = false;
-            name = "%"+std::to_string(++ExpBaseAST::expNum);
+            name = "%_"+std::to_string(++ExpBaseAST::expNum);
         }
     }
 
@@ -611,7 +611,7 @@ public:
         }
         else {
             isNum = false;
-            name = "%"+std::to_string(++ExpBaseAST::expNum);
+            name = "%_"+std::to_string(++ExpBaseAST::expNum);
         }
     }
 
@@ -667,7 +667,7 @@ public:
         }
         else {
             isNum = false;
-            name = "%"+std::to_string(++ExpBaseAST::expNum);
+            name = "%_"+std::to_string(++ExpBaseAST::expNum);
         }
     }
 
@@ -758,7 +758,7 @@ public:
         }
         else {
             if (op != "add") {
-                name = "%" + std::to_string(++ExpBaseAST::expNum);
+                name = "%_" + std::to_string(++ExpBaseAST::expNum);
             } else {
                 name = unaryExp->name;
             }
@@ -827,7 +827,7 @@ public:
         }
         else{
             isNum = false;
-            name = "%"+std::to_string(++ExpBaseAST::expNum);
+            name = "%_"+std::to_string(++ExpBaseAST::expNum);
         }
         return;
     }

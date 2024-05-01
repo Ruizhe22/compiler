@@ -133,7 +133,7 @@ private:
 class StmtAST2: public BaseAST {
 public:
     StmtAST2(std::string *id, BaseAST *ast):exp(ast){
-        name = "@" + *id;
+        name = "@_" + *id;
     }
 
     void generateIR(std::ostream &os){
@@ -269,7 +269,7 @@ private:
 class ConstDefAST: public BaseAST{
 public:
     ConstDefAST(std::string *id, BaseAST *val):constInitVal(val){
-        name = "@" + *id;
+        name = "@_" + *id;
         num = constInitVal->num;
         isNum = constInitVal->isNum;
     }
@@ -350,11 +350,11 @@ private:
 class VarDefAST: public BaseAST{
 public:
     VarDefAST(std::string *id):isInit(false){
-        name = "@" + *id;
+        name = "@_" + *id;
         isNum = false;
     }
     VarDefAST(std::string *id, BaseAST *init):initVal(init),isInit(true){
-        name = "@" + *id;
+        name = "@_" + *id;
         isNum = false;
     }
 
@@ -814,8 +814,8 @@ private:
 class PrimaryExpAST3: public BaseAST{
 public:
     // although false and without explictly assign its name, no exp will invoke its name.
-    PrimaryExpAST3(std::string *id):ident("@" + *id){
-        name = "@"+ *id;
+    PrimaryExpAST3(std::string *id):ident("@_" + *id){
+        name = "@_"+ *id;
         isID = true;
     }
 

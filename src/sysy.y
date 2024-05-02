@@ -95,10 +95,22 @@ BlockItem
 
 Stmt
   : RETURN Exp ';' {
-    $$ = new StmtAST1($2);
+        $$ = new StmtAST1($2);
+  }
+  | RETURN ';' {
+        $$ = new StmtAST1();
   }
   | LVal '=' Exp ';' {
-    $$ = new StmtAST2($1,$3);
+        $$ = new StmtAST2($1,$3);
+  }
+  | Exp ';' {
+        $$ = new StmtAST3($1);
+  }
+  | ';' {
+        $$ = new StmtAST3();
+  }
+  | Block {
+        $$ = new StmtAST4($1);
   }
   ;
 

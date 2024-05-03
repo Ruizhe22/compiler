@@ -49,6 +49,15 @@ public:
     std::string ident;
 };
 
+
+class FunctionInfo{
+public:
+    FunctionInfo(const std::string &namet):name(namet),isReturn(false){}
+    std::string name;
+    bool isReturn;
+};
+
+
 // 所有 AST 的基类
 class BaseAST {
 public:
@@ -61,6 +70,8 @@ public:
     int num;
     std::string type = "i32";
     std::unordered_map<std::string, std::shared_ptr<SymbolInfo>> symbolTable;
+    static std::shared_ptr<FunctionInfo> currentFunction;
+
     std::string getSymbolName(std::string ident){
         return symbolTable[ident]->name;
     }
@@ -104,12 +115,18 @@ public:
     }
 
     void generateIR(std::ostream &os){
+        currentFunction = std::make_shared<FunctionInfo>(name);
         os << "fun " << name << "()";
         funcType->generateIR(os);
         os << " {\n";
         os << "%entry:\n" ;
         block->generateIR(os);
+        if(!currentFunction->isReturn){
+            os << "ret 0\n" ;
+        }
+        currentFunction = nullptr;
         os << "}";
+
     }
 
     void spreadSymbolTable(){
@@ -501,6 +518,9 @@ public:
 
     void generateIR(std::ostream &os){
         for(const auto &item : itemList){
+            if(currentFunction->isReturn){
+                continue;
+            }
             item->generateIR(os);
         }
     }

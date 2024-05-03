@@ -122,7 +122,7 @@ public:
         os << "%entry:\n" ;
         block->generateIR(os);
         if(!currentFunction->isReturn){
-            os << "ret 0\n" ;
+            os << "\tret 0\n" ;
         }
         currentFunction = nullptr;
         os << "}";
@@ -164,6 +164,7 @@ public:
             exp->generateIR(os);
             os << "\tret "<< exp->name <<"\n";
         }
+        currentFunction->isReturn = true;
     }
 
     void spreadSymbolTable(){

@@ -8,13 +8,16 @@
 #include "koopa.h"
 #include "ast.h"
 #include "asm_generator.h"
+#include "auxiliary.h"
 // 声明 lexer 的输入, 以及 parser 函数
 extern FILE *yyin;
 extern int yyparse(std::unique_ptr<BaseAST> &ast);
 int ExpBaseAST::expNum = 0;
-int BlockAST::blockNum=0;
 std::unordered_map<std::string, int> SymbolInfo::mapNameIndex;
+std::unordered_map<std::string, int> BlockInfo::mapBlockIndex;
 std::shared_ptr<FunctionInfo> BaseAST::currentFunction;
+std::shared_ptr<BlockInfo> BaseAST::currentBlock;
+
 int main(int argc, const char *argv[]) {
     // 解析命令行参数. 测试脚本/评测平台要求你的编译器能接收如下参数:
     // compiler 模式 输入文件 -o 输出文件

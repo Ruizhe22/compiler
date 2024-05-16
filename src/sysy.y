@@ -37,12 +37,12 @@ using namespace std;
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token INT RETURN CONST PLUS MINUS NOT OR AND EQ NE LT GT LE GE MUL DIV MOD
+%token IF ELSE INT RETURN CONST PLUS MINUS NOT OR AND EQ NE LT GT LE GE MUL DIV MOD
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> VarDecl VarDefList InitVal VarDef FuncDef FuncType Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
+%type <ast_val> ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef FuncType Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
 %type <int_val> Number
 %type <str_val> UnaryOp BType LVal
 
@@ -88,7 +88,7 @@ BlockItem
     : Decl {
         $$ = new BlockItemAST($1,true);
     }
-    | Stmt {
+    | ExtendStmt {
         $$ = new BlockItemAST($1,false);
     }
     ;
@@ -111,6 +111,33 @@ Stmt
   }
   | Block {
         $$ = new StmtAST4($1);
+  }
+  ;
+
+ExtendStmt
+  : MatchStmt {
+    $$ = new ExtendStmtAST($1);
+  }
+  | OpenStmt {
+    $$ = new ExtendStmtAST($1);
+  }
+
+
+MatchStmt
+  : IF '(' Exp ')' MatchStmt ELSE MatchStmt {
+    $$ = new MatchStmtAST1($3,$5,$7);
+  }
+  | Stmt {
+    $$ = new MatchStmtAST2($1);
+  }
+  ;
+
+ OpenStmt
+  : IF '(' Exp ')' ExtendStmt {
+    $$ = new OpenStmtAST1($3,$5);
+  }
+  | IF '(' Exp ')' MatchStmt ELSE OpenStmt {
+    $$ = new OpenStmtAST2($3,$5,$7);
   }
   ;
 

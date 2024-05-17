@@ -41,3 +41,18 @@ BlockInfo::BlockInfo(std::string position):finish(false){
 void BlockInfo::generateIR(std::ostream &os){
     os << name << ":\n";
 }
+
+std::stack<LoopInfo> LoopInfo::loopStack;;
+void LoopInfo::pushLoopInfo(std::shared_ptr<BlockInfo> beginBlockt, std::shared_ptr<BlockInfo> bodyBlockt, std::shared_ptr<BlockInfo> endBlockt) {
+    LoopInfo loop;
+    loop.beginBlock = beginBlockt;
+    loop.bodyBlock = bodyBlockt;
+    loop.endBlock = endBlockt;
+    loopStack.push(loop);
+}
+void LoopInfo::popLoopInfo(){
+    if (!loopStack.empty()) loopStack.pop();
+}
+LoopInfo &LoopInfo::topLoopInfo(){
+    return loopStack.top();
+}

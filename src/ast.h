@@ -161,9 +161,28 @@ public:
     StmtAST4(BaseAST *ast);
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
-
 private:
     std::unique_ptr<BaseAST> block;
+};
+
+class StmtAST5: public BaseAST {
+public:
+    StmtAST5(BaseAST *ast1, BaseAST *ast2);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+private:
+    std::unique_ptr<BaseAST> exp;
+    std::unique_ptr<BaseAST> extendStmt;
+};
+
+class StmtAST6: public BaseAST {
+public:
+    void generateIR(std::ostream &os);
+};
+
+class StmtAST7: public BaseAST {
+public:
+    void generateIR(std::ostream &os);
 };
 
 class BlockAST: public BaseAST {

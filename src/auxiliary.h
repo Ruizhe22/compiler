@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <string>
 #include <unordered_map>
-#include <deque>
+#include <stack>
 
 class SymbolInfo{
 public:
@@ -43,13 +43,25 @@ public:
 // basic block in IR
 class BlockInfo{
 public:
-    // BRANCH/OR/AND, then/else/end
+    // then/else/end/begin(while)/body/entry
     BlockInfo(std::string position);
     void generateIR(std::ostream &os);
 public:
     bool finish;
     std::string name;
     static std::unordered_map<std::string , int> mapBlockIndex;
+};
+
+// 单例模式
+class LoopInfo{
+public:
+    static std::stack<LoopInfo> loopStack;
+    static void pushLoopInfo(std::shared_ptr<BlockInfo> beginBlockt, std::shared_ptr<BlockInfo> bodyBlockt, std::shared_ptr<BlockInfo> endBlockt);
+    static void popLoopInfo();
+    static LoopInfo &topLoopInfo();
+    std::shared_ptr<BlockInfo> beginBlock;
+    std::shared_ptr<BlockInfo> bodyBlock;
+    std::shared_ptr<BlockInfo> endBlock;
 };
 
 

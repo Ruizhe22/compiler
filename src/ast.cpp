@@ -83,7 +83,7 @@ MatchStmtAST1::MatchStmtAST1(BaseAST *ast1, BaseAST *ast2, BaseAST *ast3) : exp(
                                                                             matchStmt2(ast3) {}
 
 void MatchStmtAST1::generateIR(std::ostream &os) {
-    if(currentBlock->finish) return;
+    //if(currentBlock->finish) return;
     std::shared_ptr<BlockInfo> thenBlock = std::make_shared<BlockInfo>("then");
     std::shared_ptr<BlockInfo> elseBlock = std::make_shared<BlockInfo>("else");
     std::shared_ptr<BlockInfo> endBlock = std::make_shared<BlockInfo>("end");
@@ -131,7 +131,7 @@ void MatchStmtAST2::spreadSymbolTable() {
 OpenStmtAST1::OpenStmtAST1(BaseAST *ast1, BaseAST *ast2) : exp(ast1), extendStmt(ast2) {}
 
 void OpenStmtAST1::generateIR(std::ostream &os) {
-    if(currentBlock->finish) return;
+    //if(currentBlock->finish) return;
     std::shared_ptr<BlockInfo> thenBlock = std::make_shared<BlockInfo>("then");
     std::shared_ptr<BlockInfo> endBlock = std::make_shared<BlockInfo>("end");
     if(exp->isNum){
@@ -160,7 +160,7 @@ void OpenStmtAST1::spreadSymbolTable() {
 OpenStmtAST2::OpenStmtAST2(BaseAST *ast1, BaseAST *ast2, BaseAST *ast3) : exp(ast1), matchStmt(ast2), openStmt(ast3) {}
 
 void OpenStmtAST2::generateIR(std::ostream &os) {
-    if(currentBlock->finish) return;
+    //if(currentBlock->finish) return;
     std::shared_ptr<BlockInfo> thenBlock = std::make_shared<BlockInfo>("then");
     std::shared_ptr<BlockInfo> elseBlock = std::make_shared<BlockInfo>("else");
     std::shared_ptr<BlockInfo> endBlock = std::make_shared<BlockInfo>("end");
@@ -266,9 +266,51 @@ void StmtAST4::spreadSymbolTable() {
     block->spreadSymbolTable();
 }
 
-BlockAST::BlockAST(BaseAST *ast) : blockItemList(ast) {
-    //update child block symbol table
+StmtAST5::StmtAST5(BaseAST *ast1, BaseAST *ast2):exp(ast1),extendStmt(ast2){}
+
+void StmtAST5::generateIR(std::ostream &os){
+    std::shared_ptr<BlockInfo> beginBlock = std::make_shared<BlockInfo>("begin");
+    std::shared_ptr<BlockInfo> bodyBlock = std::make_shared<BlockInfo>("body");
+    std::shared_ptr<BlockInfo> endBlock = std::make_shared<BlockInfo>("end");
+    LoopInfo::pushLoopInfo(beginBlock, bodyBlock, endBlock);
+    os << "\t" << "jump " << beginBlock->name <<"\n";
+    beginBlock->generateIR(os);
+    currentBlock = beginBlock;
+    if(exp->isNum){
+        os << "\t" << "br " << exp->num << ", " << bodyBlock->name << ", " << endBlock->name <<"\n";
+    }
+    else{
+        exp->generateIR(os);
+        os << "\t" << "br " << exp->name << ", " << bodyBlock->name << ", " << endBlock->name <<"\n";
+    }
+    bodyBlock->generateIR(os);
+    currentBlock = beginBlock;
+    extendStmt->generateIR(os);
+    if(!currentBlock->finish) os << "\t" << "jump " << beginBlock->name <<"\n";
+    currentBlock->finish = true;
+    LoopInfo::popLoopInfo();
+    endBlock->generateIR(os);
+    currentBlock = endBlock;
 }
+
+void StmtAST5::spreadSymbolTable(){
+    exp->symbolTable = symbolTable;
+    exp->spreadSymbolTable();
+    extendStmt->symbolTable = symbolTable;
+    extendStmt->spreadSymbolTable();
+}
+
+void StmtAST6::generateIR(std::ostream &os){
+    os << "\t" << "jump " << LoopInfo::topLoopInfo().endBlock->name <<"\n";
+    currentBlock->finish = true;
+}
+
+void StmtAST7::generateIR(std::ostream &os){
+    os << "\t" << "jump " << LoopInfo::topLoopInfo().beginBlock->name <<"\n";
+    currentBlock->finish = true;
+}
+
+BlockAST::BlockAST(BaseAST *ast) : blockItemList(ast) {}
 
 void BlockAST::generateIR(std::ostream &os) {
     //os << name <<":\n";

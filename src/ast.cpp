@@ -303,6 +303,7 @@ void StmtAST5::spreadSymbolTable(){
 void StmtAST6::generateIR(std::ostream &os){
     os << "\t" << "jump " << LoopInfo::topLoopInfo().endBlock->name <<"\n";
     currentBlock->finish = true;
+    // must not pop loopinfo here
 }
 
 void StmtAST7::generateIR(std::ostream &os){

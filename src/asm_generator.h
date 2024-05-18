@@ -14,32 +14,8 @@
 #include <set>
 #include <memory>
 #include "koopa.h"
+#include "asm_auxiliary.h"
 
-class Function{
-public:
-    Function(std::string namet);
-
-    Function();
-
-private:
-    std::string name;
-    // koopa var to register t0 - t6
-    std::unordered_map<koopa_raw_value_t, std::string> mapAllocReg;
-    // 相较于fp，为负数
-    int sp;
-    // unalloc register
-    std::set<std::string> setUnallocReg;
-    void initRegSet();
-
-public:
-    // 相较于fp，为负数
-    std::unordered_map<koopa_raw_value_t, int> mapAllocMem;
-    std::string allocReg(const koopa_raw_value_t &);
-    std::string allocReg();
-    void restoreReg(const std::string &);
-    // for some value which is not unit, alloc memory, update mapAllocMem and esp
-    int allocMem(const koopa_raw_value_t &);
-};
 
 
 class AsmGenerator{
@@ -50,7 +26,9 @@ public:
     std::unordered_map<std::string, std::shared_ptr<Function>> mapFunction;
 private:
     std::stringstream &koopa;
-    std::ostream &fos;
+    std::ostream &ofs;
+    // 所有代码先输出到oss里，再输出到ofs里，方便调整顺序
+    std::stringstream oss;
     void rawHandler(const koopa_raw_program_t &raw);
     void visitRawSlice(const koopa_raw_slice_t &slice);
     void visitRawFunction(const koopa_raw_function_t &func);
@@ -58,11 +36,12 @@ private:
     void visitRawValue(const koopa_raw_value_t &value);
     void retHandler(const koopa_raw_value_t &value);
     void integerHandler(const koopa_raw_value_t &value);
-    void binaryHander(const koopa_raw_value_t &value);
-    void allocHander(const koopa_raw_value_t &value);
-    void loadHander(const koopa_raw_value_t &value);
-    void storeHander(const koopa_raw_value_t &value);
-
+    void binaryHandler(const koopa_raw_value_t &value);
+    void allocHandler(const koopa_raw_value_t &value);
+    void loadHandler(const koopa_raw_value_t &value);
+    void storeHandler(const koopa_raw_value_t &value);
+    void branchHandler(const koopa_raw_value_t &value);
+    void jumpHandler(const koopa_raw_value_t &value);
 };
 
 

@@ -59,7 +59,7 @@ AsmTempLabel AsmTempLabel::globalLabel;
 
 std::string AsmTempLabel::label()
 {
-    return "lable" + std::to_string(++tempLabelCount);
+    return "lable_" + std::to_string(++tempLabelCount);
 }
 std::string AsmTempLabel::tempLabel()
 {

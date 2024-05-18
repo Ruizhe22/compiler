@@ -387,30 +387,30 @@ void AsmGenerator::jumpHandler(const koopa_raw_value_t &value)
 std::string AsmGenerator::generateLoad(int src_offset, std::string dstReg, std::shared_ptr<Function> currentFunciton)
 {
     std::string inst;
-    if(src_offset >= -2047 && src_offset < 2047) {
-        inst = "\tlw " + dstReg + ", " + std::to_string(src_offset) + "(fp)\n";
-    }
-    else{
+    //if(src_offset >= -2047 && src_offset < 2047) {
+    //    inst = "\tlw " + dstReg + ", " + std::to_string(src_offset) + "(fp)\n";
+    //}
+    //else{
         std::string tempReg = currentFunciton->allocReg();
         inst = inst + "\tli " + tempReg + ", " + std::to_string(src_offset);
         inst = inst + "\tlw " + dstReg + ", 0(" + tempReg + ")\n";
         currentFunciton->restoreReg(tempReg);
-    }
+    //}
     return inst;
 }
 
 std::string AsmGenerator::generateStore(int dst_offset, std::string srcReg, std::shared_ptr<Function> currentFunciton)
 {
     std::string inst;
-    if(dst_offset >= -2047 && dst_offset < 2047) {
-        inst = "\tsw " + srcReg + ", " + std::to_string(dst_offset) + "(fp)\n";
-    }
-    else{
+    //if(dst_offset >= -2047 && dst_offset < 2047) {
+    //    inst = "\tsw " + srcReg + ", " + std::to_string(dst_offset) + "(fp)\n";
+    //}
+    //else{
         std::string tempReg = currentFunciton->allocReg();
         inst = inst + "\tli " + tempReg + ", " + std::to_string(dst_offset);
         inst = inst + "\tsw " + srcReg + ", 0(" + tempReg + ")\n";
         currentFunciton->restoreReg(tempReg);
-    }
+    //}
     return inst;
 }
 

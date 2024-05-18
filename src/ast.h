@@ -25,9 +25,8 @@ public:
     bool isNum = false;
     bool isID = false;
     int num;
-    std::string type = "i32";
     std::unordered_map<std::string, std::shared_ptr<SymbolInfo>> symbolTable;
-
+    // if n
     static std::shared_ptr<FunctionInfo> currentFunction;
     // meaning basic block
     static std::shared_ptr<BlockInfo> currentBlock;
@@ -48,6 +47,7 @@ private:
 
 class GlobalDefAST : public BaseAST{
 private:
+    //FuncDefAST or DeclAST
     std::shared_ptr<BaseAST> def;
 public:
     GlobalDefAST(BaseAST *d, bool b);
@@ -84,13 +84,34 @@ public:
 // FuncDef 也是 BaseAST
 class FuncDefAST : public BaseAST {
 public:
-    FuncDefAST(std::string *ft, std::string *s, BaseAST *b);
+    FuncDefAST(std::string *ft, std::string *id, BaseAST *p, BaseAST *b);
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
     std::string funcType;
     std::string name;
+    std::unique_ptr<BaseAST> funcFParamList;
     std::unique_ptr<BaseAST> block;
+};
+
+class FuncFParamListAST : public BaseAST {
+public:
+    FuncFParamListAST(BaseAST *p, BaseAST *list);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+private:
+    std::unique_ptr<BaseAST> funcFParam;
+    std::unique_ptr<BaseAST> funcFParamList;
+};
+
+class FuncFParamAST : public BaseAST {
+public:
+    FuncFParamAST(std::string *t, std::string *id);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+private:
+    std::string type;
+    std::string ident;
 };
 
 class ExtendStmtAST: public BaseAST {
@@ -288,6 +309,7 @@ public:
     VarDefAST(std::string *id, BaseAST *init);
     void spreadSymbolTable();
     void generateIR(std::ostream &os);
+    std::string type;
 private:
     std::unique_ptr<BaseAST> initVal;
     bool isInit;
@@ -306,9 +328,9 @@ public:
     VarDeclAST(std::string *btype, BaseAST *list);
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
-
 private:
     std::deque<std::shared_ptr<BaseAST>> varDefList;
+    std::string type;
 };
 
 

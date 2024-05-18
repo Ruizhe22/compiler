@@ -73,11 +73,28 @@ GlobalDef
     ;
 
 FuncDef
-  : Type IDENT '(' ')' Block {
-    $$ = new FuncDefAST($1,$2,$5);
+  : Type IDENT '(' FuncFParamList ')' Block {
+    $$ = new FuncDefAST($1,$2,$4,$6);
+  }
+  | Type IDENT '(' ')' Block {
+    $$ = new FuncDefAST($1,$2,nullptr,$5);
   }
   ;
 
+FuncFParamList
+    : FuncFParam {
+        $$ = new FuncFParamListAST($1, nullptr);
+    }
+    | FuncFParam ',' FuncFParamList {
+        $$ = new FuncFParamListAST($1, $3);
+    }
+    ;
+
+FuncFParam
+    : Type IDENT {
+        $$ = new FuncFParamAST($1,$2);
+    }
+    ;
 
 Block
     : '{' BlockItemList '}' {

@@ -62,9 +62,9 @@ void GlobalDefAST::spreadSymbolTable(){
 
 ExpBaseAST::ExpBaseAST(bool fresh) : allocNewName(fresh) {}
 
-FuncDefAST::FuncDefAST(std::string *ft, std::string *s, BaseAST *b) : funcType(*ft), name("@" + *s), block(b) {
+FuncDefAST::FuncDefAST(std::string *ft, std::string *id, BaseAST *p, BaseAST *b) : funcType(*ft), name("@" + *id), funcFParamList(p), block(b) {
     // exp restart to count from 0 in a new func
-    ExpBaseAST::expNum = 0;
+    //ExpBaseAST::expNum = 0;
 }
 
 void FuncDefAST::generateIR(std::ostream &os) {
@@ -502,9 +502,7 @@ VarDefListAST::VarDefListAST(BaseAST *list, BaseAST *def) : defList(((VarDefList
 }
 
 
-VarDeclAST::VarDeclAST(std::string *btype, BaseAST *list) : varDefList(((VarDefListAST *) list)->defList) {
-    type = *btype;
-}
+VarDeclAST::VarDeclAST(std::string *btype, BaseAST *list) :type(btype),varDefList(((VarDefListAST *) list)->defList) {}
 
 void VarDeclAST::generateIR(std::ostream &os) {
     for (const auto &vd: varDefList) {
@@ -515,6 +513,7 @@ void VarDeclAST::generateIR(std::ostream &os) {
 void VarDeclAST::spreadSymbolTable() {
     // 先传下去 decl语句之前的符号表 对于每个新的符号
     for (const auto &vd: varDefList) {
+        std::dynamic_pointer_cast<VarDefAST>(vd)->type = type;
         vd->symbolTable = symbolTable;
         vd->spreadSymbolTable();
         symbolTable = vd->symbolTable;

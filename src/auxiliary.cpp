@@ -24,6 +24,10 @@ SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt) : type(
     name = id + "_" + std::to_string(mapNameIndex[id]);
 }
 
+SymbolInfo::SymbolInfo(std::string id, std::string typet) : type(typet), isNum(isConstt), ident(id){
+
+}
+
 
 FunctionInfo::FunctionInfo(const std::string &namet) : name(namet), isReturn(false) {}
 

@@ -17,13 +17,15 @@ class SymbolInfo{
 public:
     // 记录这个ident是定义的第几个名字
     static std::unordered_map<std::string, int> mapNameIndex;
-
+    //for variable
     SymbolInfo(std::string id, std::string typet, bool isConstt, int constNumt);
-
     SymbolInfo(std::string id, std::string typet, bool isConstt);
+    // for func
+    SymbolInfo(std::string id, std::string typet);
 
     std::string name;
     std::string type;
+    bool isFunc
     // isNum表示是不是const变量
     bool isNum;
     int num;

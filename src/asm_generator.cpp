@@ -86,8 +86,8 @@ void AsmGenerator::visitRawFunction(const koopa_raw_function_t &func)
     ofs << "\tmv fp, sp" << "\n";
     // 访问所有基本块
     visitRawSlice(func->bbs);
-    //oss << "\tli t0, " << currentFunciton->sp << "\n";
-    //ofs << "\tadd sp, sp, t0" << "\n";
+    oss << "\tli t0, " << currentFunciton->sp << "\n";
+    ofs << "\tadd sp, sp, t0" << "\n";
     ofs << oss.rdbuf();
 }
 

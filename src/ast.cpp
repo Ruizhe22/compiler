@@ -33,10 +33,36 @@ void CompUnitAST::generateIR(std::ostream &os) {
     funcDef->generateIR(os);
 }
 
+GlobalDefListAST1::GlobalDefListAST1(BaseAST *d, BaseAST *l) : globalDef(d),globalDefList(l) {}
+void GlobalDefListAST1::generateIR(std::ostream &os) {
+    globalDef->generateIR(os);
+    globalDefList->generateIR(os);
+}
+void GlobalDefListAST1::spreadSymbolTable(){
+    globalDef->symbolTable = symbolTable;
+    globalDef->spreadSymbolTable();
+    if (std::dynamic_pointer_cast<GlobalDefAST>(globalDef)->isDecl){
+        symbolTable.merge(globalDef->symbolTable);
+    }
+    globalDefList->symbolTable = symbolTable;
+    globalDefList->spreadSymbolTable();
+}
+
+GlobalDefAST::GlobalDefAST(BaseAST *d, bool b):def(d),isDecl(b){}
+void GlobalDefAST::generateIR(std::ostream &os){
+    def->generateIR(os);
+}
+void GlobalDefAST::spreadSymbolTable(){
+    def->symbolTable = symbolTable;
+    def->spreadSymbolTable();
+    if (isDecl){
+        symbolTable.merge(def->symbolTable);
+    }
+}
 
 ExpBaseAST::ExpBaseAST(bool fresh) : allocNewName(fresh) {}
 
-FuncDefAST::FuncDefAST(BaseAST *ft, std::string *s, BaseAST *b) : funcType(ft), name("@" + *s), block(b) {
+FuncDefAST::FuncDefAST(std::string *ft, std::string *s, BaseAST *b) : funcType(*ft), name("@" + *s), block(b) {
     // exp restart to count from 0 in a new func
     ExpBaseAST::expNum = 0;
 }
@@ -44,7 +70,9 @@ FuncDefAST::FuncDefAST(BaseAST *ft, std::string *s, BaseAST *b) : funcType(ft), 
 void FuncDefAST::generateIR(std::ostream &os) {
     currentFunction = std::make_shared<FunctionInfo>(name);
     os << "fun " << name << "()";
-    funcType->generateIR(os);
+    if (funcType == "i32"){
+        os << ": i32 ";
+    }
     os << " {\n";
     currentBlock = std::make_shared<BlockInfo>("entry");
     currentBlock->generateIR(os);
@@ -60,12 +88,6 @@ void FuncDefAST::generateIR(std::ostream &os) {
 void FuncDefAST::spreadSymbolTable() {
     block->symbolTable = symbolTable;
     block->spreadSymbolTable();
-}
-
-FuncTypeAST::FuncTypeAST(const std::string &t) : type(t) {}
-
-void FuncTypeAST::generateIR(std::ostream &os) {
-    os << ":" << type;
 }
 
 ExtendStmtAST::ExtendStmtAST(BaseAST *ast) : stmt(ast) {}

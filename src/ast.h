@@ -46,6 +46,32 @@ private:
 
 };
 
+class GlobalDefAST : public BaseAST{
+private:
+    std::shared_ptr<BaseAST> def;
+public:
+    GlobalDefAST(BaseAST *d, bool b);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+    bool isDecl;
+};
+
+class GlobalDefListAST1 : public BaseAST {
+public:
+    GlobalDefListAST1(BaseAST *d, BaseAST *l);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+    std::shared_ptr<BaseAST> globalDef;
+    std::shared_ptr<BaseAST> globalDefList;
+};
+
+class GlobalDefListAST2 : public BaseAST {
+public:
+    GlobalDefListAST2() = default;
+};
+
+
+
 class ExpBaseAST: public BaseAST {
 public:
     //restore to 0 in funcDef construct
@@ -58,23 +84,14 @@ public:
 // FuncDef 也是 BaseAST
 class FuncDefAST : public BaseAST {
 public:
-    FuncDefAST(BaseAST *ft, std::string *s, BaseAST *b);
+    FuncDefAST(std::string *ft, std::string *s, BaseAST *b);
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> funcType;
+    std::string funcType;
     std::string name;
     std::unique_ptr<BaseAST> block;
 };
-
-class FuncTypeAST: public BaseAST {
-public:
-    FuncTypeAST(const std::string &t);
-    void generateIR(std::ostream &os);
-private:
-    std::string type;
-};
-
 
 class ExtendStmtAST: public BaseAST {
 public:

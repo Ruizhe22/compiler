@@ -37,36 +37,47 @@ using namespace std;
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token WHILE CONTINUE BREAK IF ELSE INT RETURN CONST PLUS MINUS NOT OR AND EQ NE LT GT LE GE MUL DIV MOD
+%token VOID WHILE CONTINUE BREAK IF ELSE INT RETURN CONST PLUS MINUS NOT OR AND EQ NE LT GT LE GE MUL DIV MOD
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef FuncType Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
+%type <ast_val> GlobalDefList GlobalDef ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
 %type <int_val> Number
-%type <str_val> UnaryOp BType LVal
+%type <str_val> UnaryOp Type LVal
 
 %%
 
 CompUnit
-  : FuncDef {
+  : GlobalDefList{
     auto comp_unit = make_unique<CompUnitAST>($1);
     ast = move(comp_unit);
   }
   ;
 
+GlobalDefList
+    : GlobalDef GlobalDefList{
+        $$ = new GlobalDefListAST1($1, $2);
+    }
+    | {
+        $$ = new GlobalDefListAST2();
+    }
+
+GlobalDef
+    : FuncDef {
+        $$ = new GlobalDefAST($1,false);
+    }
+    | Decl {
+        $$ = new GlobalDefAST($1,true);
+    }
+    ;
+
 FuncDef
-  : FuncType IDENT '(' ')' Block {
+  : Type IDENT '(' ')' Block {
     $$ = new FuncDefAST($1,$2,$5);
   }
   ;
 
-// 同上, 不再解释
-FuncType
-  : INT {
-    $$ = new FuncTypeAST("i32");
-  }
-  ;
 
 Block
     : '{' BlockItemList '}' {
@@ -286,7 +297,7 @@ Decl
 
 
 ConstDecl
-    : CONST BType ConstDefList ';' {
+    : CONST Type ConstDefList ';' {
         $$ = new ConstDeclAST($2, $3);
     }
     ;
@@ -307,7 +318,7 @@ ConstDef
     ;
 
 VarDecl
-    : BType VarDefList ';'{
+    : Type VarDefList ';'{
         $$ = new VarDeclAST($1, $2);
     }
     ;
@@ -336,9 +347,12 @@ InitVal
     }
     ;
 
-BType
+Type
     : INT {
         $$ = new std::string("i32");
+    }
+    | VOID {
+        $$ = new std::string("void");
     }
     ;
 

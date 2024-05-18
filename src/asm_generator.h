@@ -42,7 +42,9 @@ private:
     void storeHandler(const koopa_raw_value_t &value);
     void branchHandler(const koopa_raw_value_t &value);
     void jumpHandler(const koopa_raw_value_t &value);
-};
 
+    std::string generateLoad(int src_offset, std::string dstReg, std::shared_ptr<Function> currentFunciton);
+    std::string generateStore(int dst_offset, std::string srcReg, std::shared_ptr<Function> currentFunciton);
+};
 
 #endif //COMPILER_GENERATE_ASM_H

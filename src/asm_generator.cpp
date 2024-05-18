@@ -86,7 +86,8 @@ void AsmGenerator::visitRawFunction(const koopa_raw_function_t &func)
     ofs << "\tmv fp, sp" << "\n";
     // 访问所有基本块
     visitRawSlice(func->bbs);
-    //ofs << "\taddi sp, sp, " << currentFunciton->sp << "\n";
+    oss << "\tli t0, " << currentFunciton->sp << "\n";
+    ofs << "\tadd sp, sp, t0" << "\n";
     ofs << oss.rdbuf();
 }
 
@@ -151,7 +152,7 @@ void AsmGenerator::retHandler(const koopa_raw_value_t &value)
             oss << "\tli a0, " << kind.data.integer.value << "\n";
             break;
         default:
-            oss << "\tlw a0," << currentFunciton->mapAllocMem[inst.value] <<"(fp)\n";
+            oss << generateLoad(currentFunciton->mapAllocMem[inst.value],"a0",currentFunciton);
             //assert(false);
     }
     oss << "\tmv sp, fp" << "\n";
@@ -180,7 +181,7 @@ void AsmGenerator::binaryHandler(const koopa_raw_value_t &value){
             oss << "\tli " + leftReg + ", " << leftValue->kind.data.integer.value << "\n";
             break;
         default:
-            oss << "\tlw " << leftReg << ", " << currentFunciton->mapAllocMem[leftValue] <<"(fp)\n";
+            oss << generateLoad(currentFunciton->mapAllocMem[leftValue],leftReg,currentFunciton);
 
     }
 
@@ -190,7 +191,7 @@ void AsmGenerator::binaryHandler(const koopa_raw_value_t &value){
             oss << "\tli " + rightReg + ", " << rightValue->kind.data.integer.value << "\n";
             break;
         default:
-            oss << "\tlw " << rightReg << ", " << currentFunciton->mapAllocMem[rightValue] <<"(fp)\n";
+            oss << generateLoad(currentFunciton->mapAllocMem[rightValue],rightReg,currentFunciton);
 
     }
 
@@ -290,7 +291,7 @@ void AsmGenerator::binaryHandler(const koopa_raw_value_t &value){
     currentFunciton->restoreReg(tempReg);
     currentFunciton->restoreReg(leftReg);
     currentFunciton->restoreReg(rightReg);
-    oss << "\tsw " << expReg << ", " << dst <<"(fp)\n";
+    oss << generateStore(dst,expReg,currentFunciton);
     currentFunciton->restoreReg(expReg);
 
 
@@ -310,18 +311,17 @@ void AsmGenerator::loadHandler(const koopa_raw_value_t &value)
     koopa_raw_load_t inst = value->kind.data.load;
     int src = currentFunciton->mapAllocMem[inst.src];
     int dst = currentFunciton->allocMem(value);
-    std::string tempReg = currentFunciton->allocReg();
+    std::string reg = currentFunciton->allocReg();
     switch(inst.src->kind.tag){
         case KOOPA_RVT_ALLOC:
-            oss << "\tlw " << tempReg << ", " << src <<"(fp)\n";
+            oss << generateLoad(src, reg, currentFunciton);
+            oss << generateStore(dst, reg, currentFunciton);
             break;
         default:
-            oss << "\tlw " << tempReg << ", " << src <<"(fp)\n";
-            oss << "\tlw " << tempReg << ", 0(" << tempReg << ")\n";
+            oss << generateLoad(src, reg, currentFunciton);
+            oss << "\tlw " << reg << ", 0(" << reg << ")\n";
     }
-
-    oss << "\tsw " << tempReg << ", " << dst <<"(fp)\n";
-    currentFunciton->restoreReg(tempReg);
+    currentFunciton->restoreReg(reg);
 }
 
 void AsmGenerator::storeHandler(const koopa_raw_value_t &value)
@@ -336,15 +336,17 @@ void AsmGenerator::storeHandler(const koopa_raw_value_t &value)
         oss << "\tli " << stempReg << ", " << src->kind.data.integer.value << "\n";
     }
     else{
-        oss << "\tlw " << stempReg << ", " << currentFunciton->mapAllocMem[src] <<"(fp)\n";
+        oss << generateLoad(currentFunciton->mapAllocMem[src],stempReg,currentFunciton);
     }
 
     switch(dst->kind.tag){
         case KOOPA_RVT_ALLOC:
-            oss << "\tsw " << stempReg << ", " << currentFunciton->mapAllocMem[dst] <<"(fp)\n";
+            oss << generateStore(currentFunciton->mapAllocMem[dst],stempReg,currentFunciton);
             break;
         default:
-            oss << "\tlw " << dtempReg << ", " << currentFunciton->mapAllocMem[dst] <<"(fp)\n";
+            //oss << "\tlw " << dtempReg << ", " << currentFunciton->mapAllocMem[dst] <<"(fp)\n";
+            //oss << "\tsw " << stempReg << ", 0(" << dtempReg << ")\n";
+            oss << generateLoad(currentFunciton->mapAllocMem[dst],dtempReg,currentFunciton);
             oss << "\tsw " << stempReg << ", 0(" << dtempReg << ")\n";
 
     }
@@ -364,7 +366,7 @@ void AsmGenerator::branchHandler(const koopa_raw_value_t &value)
     if(cond->kind.tag == KOOPA_RVT_INTEGER){
         oss << "\tli " << condReg << ", " << cond->kind.data.integer.value << "\n";
     }else{
-        oss << "\tlw " << condReg << ", " << currentFunciton->mapAllocMem[cond] <<"(fp)\n";;
+        oss << generateLoad(currentFunciton->mapAllocMem[cond],condReg,currentFunciton);
     }
 
     std::string label = AsmTempLabel::tempLabel();
@@ -379,6 +381,37 @@ void AsmGenerator::jumpHandler(const koopa_raw_value_t &value)
 {
     koopa_raw_basic_block_t target = value->kind.data.jump.target;
     oss << "\tj " << target->name + 1 << "\n";
+}
+
+
+std::string AsmGenerator::generateLoad(int src_offset, std::string dstReg, std::shared_ptr<Function> currentFunciton)
+{
+    std::string inst;
+    if(src_offset >= -2048 && src_offset < 2048) {
+        inst = "\tlw " + dstReg + ", " + std::to_string(src_offset) + "(fp)\n";
+    }
+    else{
+        std::string tempReg = currentFunciton->allocReg();
+        inst = inst + "\tli " + tempReg + ", " + std::to_string(src_offset);
+        inst = inst + "\tlw " + dstReg + ", 0(" + tempReg + ")\n";
+        currentFunciton->restoreReg(tempReg);
+    }
+    return inst;
+}
+
+std::string AsmGenerator::generateStore(int dst_offset, std::string srcReg, std::shared_ptr<Function> currentFunciton)
+{
+    std::string inst;
+    if(dst_offset >= -2048 && dst_offset < 2048) {
+        inst = "\tsw " + srcReg + ", " + std::to_string(dst_offset) + "(fp)\n";
+    }
+    else{
+        std::string tempReg = currentFunciton->allocReg();
+        inst = inst + "\tli " + tempReg + ", " + std::to_string(dst_offset);
+        inst = inst + "\tsw " + srcReg + ", 0(" + tempReg + ")\n";
+        currentFunciton->restoreReg(tempReg);
+    }
+    return inst;
 }
 
 

@@ -32,6 +32,12 @@ public:
     static std::shared_ptr<BlockInfo> currentBlock;
 
     std::string getSymbolName(std::string ident);
+
+    void parseSymbolTable(){
+        for (auto &pair : symbolTable) {
+            std::cout << "####" << pair.first << "####" << pair.second->name << std::endl;
+        }
+    }
 };
 
 // CompUnit 是 BaseAST
@@ -41,7 +47,7 @@ public:
     void generateIR(std::ostream &os);
 
 private:
-    std::unique_ptr<BaseAST> funcDef;
+    std::shared_ptr<BaseAST> globalDefList;
 
 };
 
@@ -87,31 +93,32 @@ public:
     FuncDefAST(std::string *ft, std::string *id, BaseAST *p, BaseAST *b);
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
-private:
-    std::string funcType;
+    std::string type;
     std::string name;
-    std::unique_ptr<BaseAST> funcFParamList;
-    std::unique_ptr<BaseAST> block;
+private:
+    std::shared_ptr<BaseAST> funcFParamList;
+    std::shared_ptr<BaseAST> block;
 };
 
 class FuncFParamListAST : public BaseAST {
 public:
     FuncFParamListAST(BaseAST *p, BaseAST *list);
     void generateIR(std::ostream &os);
+    void generateParamIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> funcFParam;
-    std::unique_ptr<BaseAST> funcFParamList;
+    std::shared_ptr<BaseAST> funcFParam;
+    std::shared_ptr<BaseAST> funcFParamList;
 };
 
 class FuncFParamAST : public BaseAST {
 public:
     FuncFParamAST(std::string *t, std::string *id);
     void generateIR(std::ostream &os);
+    void generateParamIR(std::ostream &os);
     void spreadSymbolTable();
-private:
     std::string type;
-    std::string ident;
+    std::string name;
 };
 
 class ExtendStmtAST: public BaseAST {
@@ -120,7 +127,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> stmt;
+    std::shared_ptr<BaseAST> stmt;
 };
 
 class MatchStmtAST1: public BaseAST {
@@ -129,9 +136,9 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> exp;
-    std::unique_ptr<BaseAST> matchStmt1;
-    std::unique_ptr<BaseAST> matchStmt2;
+    std::shared_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> matchStmt1;
+    std::shared_ptr<BaseAST> matchStmt2;
 };
 
 class MatchStmtAST2: public BaseAST {
@@ -140,7 +147,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> stmt;
+    std::shared_ptr<BaseAST> stmt;
 };
 
 class OpenStmtAST1: public BaseAST {
@@ -150,8 +157,8 @@ public:
     void spreadSymbolTable();
 
 private:
-    std::unique_ptr<BaseAST> exp;
-    std::unique_ptr<BaseAST> extendStmt;
+    std::shared_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> extendStmt;
 };
 
 class OpenStmtAST2: public BaseAST {
@@ -160,9 +167,9 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> exp;
-    std::unique_ptr<BaseAST> matchStmt;
-    std::unique_ptr<BaseAST> openStmt;
+    std::shared_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> matchStmt;
+    std::shared_ptr<BaseAST> openStmt;
 };
 
 class StmtAST1: public BaseAST {
@@ -172,7 +179,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> exp;
 };
 
 class StmtAST2: public BaseAST {
@@ -181,7 +188,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> exp;
 };
 
 class StmtAST3: public BaseAST {
@@ -191,7 +198,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> exp;
 };
 
 class StmtAST4: public BaseAST {
@@ -200,7 +207,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> block;
+    std::shared_ptr<BaseAST> block;
 };
 
 class StmtAST5: public BaseAST {
@@ -209,8 +216,8 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> exp;
-    std::unique_ptr<BaseAST> extendStmt;
+    std::shared_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> extendStmt;
 };
 
 class StmtAST6: public BaseAST {
@@ -230,7 +237,7 @@ public:
     void spreadSymbolTable();
 
 private:
-    std::unique_ptr<BaseAST> blockItemList;
+    std::shared_ptr<BaseAST> blockItemList;
 };
 
 class BlockItemAST: public BaseAST {
@@ -258,7 +265,7 @@ public:
     ConstExpAST(BaseAST *expt);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> exp;
 };
 
 class ConstInitValAST: public BaseAST{
@@ -266,15 +273,16 @@ public:
     ConstInitValAST(BaseAST *constexp);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> constExp;
+    std::shared_ptr<BaseAST> constExp;
 };
 
 class ConstDefAST: public BaseAST{
 public:
     ConstDefAST(std::string *id, BaseAST *val);
     void spreadSymbolTable();
+    std::string type;
 private:
-    std::unique_ptr<BaseAST> constInitVal;
+    std::shared_ptr<BaseAST> constInitVal;
 };
 
 class ConstDefListAST: public BaseAST{
@@ -299,7 +307,7 @@ public:
     void spreadSymbolTable();
     void generateIR(std::ostream &os);
 private:
-    std::unique_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> exp;
 };
 
 
@@ -311,7 +319,7 @@ public:
     void generateIR(std::ostream &os);
     std::string type;
 private:
-    std::unique_ptr<BaseAST> initVal;
+    std::shared_ptr<BaseAST> initVal;
     bool isInit;
 };
 
@@ -329,8 +337,8 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::deque<std::shared_ptr<BaseAST>> varDefList;
     std::string type;
+    std::deque<std::shared_ptr<BaseAST>> varDefList;
 };
 
 
@@ -351,7 +359,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> lOrExp;
+    std::shared_ptr<BaseAST> lOrExp;
 };
 
 class ExpBaseAST1: public ExpBaseAST{
@@ -360,7 +368,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> delegate;
+    std::shared_ptr<BaseAST> delegate;
 };
 
 
@@ -370,8 +378,8 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 protected:
-    std::unique_ptr<BaseAST> left;
-    std::unique_ptr<BaseAST> right;
+    std::shared_ptr<BaseAST> left;
+    std::shared_ptr<BaseAST> right;
     std::string op;
 };
 
@@ -383,8 +391,8 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> left;
-    std::unique_ptr<BaseAST> right;
+    std::shared_ptr<BaseAST> left;
+    std::shared_ptr<BaseAST> right;
 };
 
 using LAndExpAST1 = ExpBaseAST1;
@@ -395,8 +403,8 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> left;
-    std::unique_ptr<BaseAST> right;
+    std::shared_ptr<BaseAST> left;
+    std::shared_ptr<BaseAST> right;
 };
 
 using EqExpAST1 = ExpBaseAST1;
@@ -421,7 +429,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> primaryExp;
+    std::shared_ptr<BaseAST> primaryExp;
 };
 
 class UnaryExpAST2: public ExpBaseAST{
@@ -430,8 +438,32 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> unaryExp;
+    std::shared_ptr<BaseAST> unaryExp;
     std::string op;
+};
+
+//函数调用
+class UnaryExpAST3: public ExpBaseAST{
+public:
+    UnaryExpAST3(std::string *id, BaseAST *ast);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+private:
+    std::string ident;
+    std::shared_ptr<BaseAST> funcRParamList;
+    bool isVoid;
+};
+
+class FuncRParamListAST: public BaseAST{
+public:
+    FuncRParamListAST(BaseAST *ast1, BaseAST *ast2);
+    void generateIR(std::ostream &os);
+    //生成括号里内容
+    void generateParam(std::ostream &os);
+    void spreadSymbolTable();
+private:
+    std::shared_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> funcRParamList;
 };
 
 class PrimaryExpAST1: public ExpBaseAST{
@@ -447,7 +479,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
-    std::unique_ptr<BaseAST> exp;
+    std::shared_ptr<BaseAST> exp;
 };
 
 class PrimaryExpAST3: public BaseAST{

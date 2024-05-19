@@ -25,12 +25,29 @@ std::string BaseAST::getSymbolName(std::string ident) {
     return symbolTable[ident]->name;
 }
 
-CompUnitAST::CompUnitAST(BaseAST *f) : funcDef(f) {}
+CompUnitAST::CompUnitAST(BaseAST *f) : globalDefList(f) {}
 
 void CompUnitAST::generateIR(std::ostream &os) {
-    funcDef->symbolTable = symbolTable;
-    funcDef->spreadSymbolTable();
-    funcDef->generateIR(os);
+    os << "decl @getint(): i32\n";
+    os << "decl @getch(): i32\n";
+    os << "decl @getarray(*i32): i32\n";
+    os << "decl @putint(i32)\n";
+    os << "decl @putch(i32)\n";
+    os << "decl @putarray(i32, *i32)\n";
+    os << "decl @starttime()\n";
+    os << "decl @stoptime()\n";
+    os << "\n";
+    symbolTable["@getint"] = std::make_shared<SymbolInfo>("@getint", "i32");
+    symbolTable["@getch"] = std::make_shared<SymbolInfo>("@getch", "i32");
+    symbolTable["@getarray"] = std::make_shared<SymbolInfo>("@getarray", "i32");
+    symbolTable["@putint"] = std::make_shared<SymbolInfo>("@putint", "void");
+    symbolTable["@putch"] = std::make_shared<SymbolInfo>("@putch", "void");
+    symbolTable["@putarray"] = std::make_shared<SymbolInfo>("@putarray", "void");
+    symbolTable["@starttime"] = std::make_shared<SymbolInfo>("@starttime", "void");
+    symbolTable["@stoptime"] = std::make_shared<SymbolInfo>("@stoptime", "void");
+    globalDefList->symbolTable = symbolTable;
+    globalDefList->spreadSymbolTable();
+    globalDefList->generateIR(os);
 }
 
 GlobalDefListAST1::GlobalDefListAST1(BaseAST *d, BaseAST *l) : globalDef(d),globalDefList(l) {}
@@ -41,9 +58,7 @@ void GlobalDefListAST1::generateIR(std::ostream &os) {
 void GlobalDefListAST1::spreadSymbolTable(){
     globalDef->symbolTable = symbolTable;
     globalDef->spreadSymbolTable();
-    if (std::dynamic_pointer_cast<GlobalDefAST>(globalDef)->isDecl){
-        symbolTable.merge(globalDef->symbolTable);
-    }
+    symbolTable = globalDef->symbolTable;
     globalDefList->symbolTable = symbolTable;
     globalDefList->spreadSymbolTable();
 }
@@ -53,41 +68,105 @@ void GlobalDefAST::generateIR(std::ostream &os){
     def->generateIR(os);
 }
 void GlobalDefAST::spreadSymbolTable(){
+    // add func name to symbol table
+    if (!isDecl){
+        auto func = std::dynamic_pointer_cast<FuncDefAST>(def);
+        symbolTable[func->name] = std::make_shared<SymbolInfo>(func->name, func->type);
+    }
     def->symbolTable = symbolTable;
     def->spreadSymbolTable();
     if (isDecl){
-        symbolTable.merge(def->symbolTable);
+        symbolTable = def->symbolTable;
     }
 }
 
 ExpBaseAST::ExpBaseAST(bool fresh) : allocNewName(fresh) {}
 
-FuncDefAST::FuncDefAST(std::string *ft, std::string *id, BaseAST *p, BaseAST *b) : funcType(*ft), name("@" + *id), funcFParamList(p), block(b) {
-    // exp restart to count from 0 in a new func
-    //ExpBaseAST::expNum = 0;
-}
 
+FuncDefAST::FuncDefAST(std::string *ft, std::string *id, BaseAST *p, BaseAST *b) : type(*ft), name("@" + *id), funcFParamList(p), block(b) {}
 void FuncDefAST::generateIR(std::ostream &os) {
-    currentFunction = std::make_shared<FunctionInfo>(name);
-    os << "fun " << name << "()";
-    if (funcType == "i32"){
+    ExpBaseAST::expNum = 0;
+    BlockInfo::mapBlockIndex.clear();
+    currentFunction = std::make_shared<FunctionInfo>(name, type);
+    os << "fun " << name << "(";
+    //生成参数列表
+    if (funcFParamList){
+        std::dynamic_pointer_cast<FuncFParamListAST>(funcFParamList)->generateParamIR(os);
+    }
+    os<< ")";
+    if (type == "i32"){
         os << ": i32 ";
     }
     os << " {\n";
     currentBlock = std::make_shared<BlockInfo>("entry");
     currentBlock->generateIR(os);
+    // 进入entry，首先生成parameters分配空间
+    if (funcFParamList) { funcFParamList->generateIR(os); }
     block->generateIR(os);
+
     if (!currentBlock->finish) {
-        os << "\tret 0\n";
+        if (type == "i32"){
+            os << "\tret 0\n";
+        }
+        else{
+            os << "\tret\n";
+        }
     }
     currentFunction = nullptr;
-    os << "}";
+    os << "}\n\n";
 
 }
 
 void FuncDefAST::spreadSymbolTable() {
+    if (funcFParamList) {
+        funcFParamList->symbolTable = symbolTable;
+        funcFParamList->spreadSymbolTable();
+        symbolTable = funcFParamList->symbolTable;
+    }
     block->symbolTable = symbolTable;
     block->spreadSymbolTable();
+}
+
+FuncFParamListAST::FuncFParamListAST(BaseAST *p, BaseAST *list):funcFParam(p),funcFParamList(list){}
+void FuncFParamListAST::generateParamIR(std::ostream &os){
+    std::dynamic_pointer_cast<FuncFParamAST>(funcFParam)->generateParamIR(os);
+    if (funcFParamList) {
+        os << ", ";
+        std::dynamic_pointer_cast<FuncFParamListAST>(funcFParamList)->generateParamIR(os);
+    }
+}
+void FuncFParamListAST::generateIR(std::ostream &os){
+    funcFParam->generateIR(os);
+    if (funcFParamList) { funcFParamList->generateIR(os); }
+}
+void FuncFParamListAST::spreadSymbolTable(){
+    funcFParam->symbolTable = symbolTable;
+    funcFParam->spreadSymbolTable();
+    symbolTable = funcFParam->symbolTable;
+    if (funcFParamList) {
+        funcFParamList->symbolTable = symbolTable;
+        funcFParamList->spreadSymbolTable();
+        symbolTable = funcFParamList->symbolTable;
+    }
+}
+
+FuncFParamAST::FuncFParamAST(std::string *t, std::string *id):type(*t),name("@" + *id){}
+void FuncFParamAST::generateParamIR(std::ostream &os){
+    //getSymbolName(name);
+    os << getSymbolName(name) << ": " << type;
+}
+void FuncFParamAST::generateIR(std::ostream &os){
+    // %x = alloc i32
+    // store @x, %x
+    std::string symbolName = getSymbolName(name);
+    std::string tempName = "%" + symbolName.substr(1);
+    symbolTable[name]->name = tempName;
+    os << "\t" << tempName << " = alloc " << type << "\n";
+    os << "\tstore " << symbolName << ", " << tempName << "\n";
+}
+void FuncFParamAST::spreadSymbolTable(){
+    symbolTable[name] = std::make_shared<SymbolInfo>(name, type, false);
+    //std::cout << "###### " << symbolTable.size() << symbolTable.contains(name) << symbolTable.begin()->first << "\n";
 }
 
 ExtendStmtAST::ExtendStmtAST(BaseAST *ast) : stmt(ast) {}
@@ -353,7 +432,7 @@ BlockItemAST::BlockItemAST(BaseAST *itemt, bool isdecl) : item(itemt), isDecl(is
 void BlockItemAST::spreadSymbolTable() {
     item->symbolTable = symbolTable;
     item->spreadSymbolTable();
-    if (isDecl) { symbolTable.merge(item->symbolTable); }
+    if (isDecl) { symbolTable = item->symbolTable; }
 }
 
 void BlockItemAST::generateIR(std::ostream &os) {
@@ -376,7 +455,6 @@ void DeclAST::spreadSymbolTable() {
 void DeclAST::generateIR(std::ostream &os) {
     decl->generateIR(os);
 }
-
 
 ConstExpAST::ConstExpAST(BaseAST *expt) : exp(expt) {
     // without error detection
@@ -437,6 +515,7 @@ ConstDeclAST::ConstDeclAST(std::string *btype, BaseAST *list) : type(*btype),
 void ConstDeclAST::spreadSymbolTable() {
     // 先传下去 decl语句之前的符号表 对于每个新的符号
     for (const auto &cd: constDefList) {
+        std::dynamic_pointer_cast<ConstDefAST>(cd)->type = type;
         cd->symbolTable = symbolTable;
         cd->spreadSymbolTable();
         symbolTable = cd->symbolTable;
@@ -447,69 +526,12 @@ InitValAST::InitValAST(BaseAST *expt) : exp(expt) {
     name = exp->name;
 }
 
-void InitValAST::spreadSymbolTable() {
-    exp->symbolTable = symbolTable;
-    exp->spreadSymbolTable();
-    if (exp->isNum) {
-        num = exp->num;
-        isNum = true;
-    } else {
-        isNum = false;
-        name = exp->name;
-    }
-}
-
-void InitValAST::generateIR(std::ostream &os) {
-    exp->generateIR(os);
-}
-
-VarDefAST::VarDefAST(std::string *id) : isInit(false) {
-    name = "@" + *id;
-    isNum = false;
-}
-
-VarDefAST::VarDefAST(std::string *id, BaseAST *init) : initVal(init), isInit(true) {
-    name = "@" + *id;
-    isNum = false;
-}
-
-void VarDefAST::spreadSymbolTable() {
-    if (isInit) {
-        initVal->symbolTable = symbolTable;
-        initVal->spreadSymbolTable();
-    }
-
-    symbolTable[name] = std::make_shared<SymbolInfo>(name, type, false);
-}
-
-void VarDefAST::generateIR(std::ostream &os) {
-    os << "\t" << getSymbolName(name) << " = alloc " << type << "\n";
-    if (isInit) {
-        if (initVal->isNum) {
-            os << "\tstore " << initVal->num << ", " << getSymbolName(name) << "\n";
-        } else {
-            initVal->generateIR(os);
-            os << "\tstore " << initVal->name << ", " << getSymbolName(name) << "\n";
-        }
-    }
-}
-
-
-VarDefListAST::VarDefListAST(BaseAST *def) : defList(1, std::shared_ptr<BaseAST>(def)) {};
-
-VarDefListAST::VarDefListAST(BaseAST *list, BaseAST *def) : defList(((VarDefListAST *) list)->defList) {
-    defList.push_back(std::shared_ptr<BaseAST>(def));
-}
-
-
-VarDeclAST::VarDeclAST(std::string *btype, BaseAST *list) :type(btype),varDefList(((VarDefListAST *) list)->defList) {}
-
+VarDeclAST::VarDeclAST(std::string *btype, BaseAST *list) :type(*btype),varDefList(((VarDefListAST *) list)->defList) {}
 void VarDeclAST::generateIR(std::ostream &os) {
     for (const auto &vd: varDefList) {
         vd->generateIR(os);
     }
 }
-
 void VarDeclAST::spreadSymbolTable() {
     // 先传下去 decl语句之前的符号表 对于每个新的符号
     for (const auto &vd: varDefList) {
@@ -518,6 +540,52 @@ void VarDeclAST::spreadSymbolTable() {
         vd->spreadSymbolTable();
         symbolTable = vd->symbolTable;
     }
+}
+
+VarDefAST::VarDefAST(std::string *id) : isInit(false) {
+    name = "@" + *id;
+    isNum = false;
+    num = 0;
+}
+VarDefAST::VarDefAST(std::string *id, BaseAST *init) : initVal(init), isInit(true) {
+    name = "@" + *id;
+    isNum = false;
+}
+void VarDefAST::spreadSymbolTable() {
+    if (isInit) {
+        initVal->symbolTable = symbolTable;
+        initVal->spreadSymbolTable();
+        num = initVal->num;
+    }
+    //std::cout<< "######" << name << " ###" << num << std::endl;
+    symbolTable[name] = std::make_shared<SymbolInfo>(name, type, false, num);
+}
+void VarDefAST::generateIR(std::ostream &os) {
+    if (currentFunction) {
+        os << "\t" << getSymbolName(name) << " = alloc " << type << "\n";
+        if (isInit) {
+            if (initVal->isNum) {
+                os << "\tstore " << initVal->num << ", " << getSymbolName(name) << "\n";
+            } else {
+                initVal->generateIR(os);
+                os << "\tstore " << initVal->name << ", " << getSymbolName(name) << "\n";
+            }
+        }
+    }
+    else{
+        if (isInit){
+            os << "global " << getSymbolName(name) << " = alloc " << type << ", " << num << "\n";
+        }
+        else{
+            os << "global " << getSymbolName(name) << " = alloc " << type << ", zeroinit\n";
+        }
+    }
+}
+
+
+VarDefListAST::VarDefListAST(BaseAST *def) : defList(1, std::shared_ptr<BaseAST>(def)) {};
+VarDefListAST::VarDefListAST(BaseAST *list, BaseAST *def) : defList(((VarDefListAST *) list)->defList) {
+    defList.push_back(std::shared_ptr<BaseAST>(def));
 }
 
 BlockItemListAST::BlockItemListAST() = default;
@@ -545,6 +613,22 @@ void BlockItemListAST::spreadSymbolTable() {
     }
 }
 
+void InitValAST::spreadSymbolTable() {
+    exp->symbolTable = symbolTable;
+    exp->spreadSymbolTable();
+    if (exp->isNum) {
+        isNum = true;
+    } else {
+        isNum = false;
+        name = exp->name;
+    }
+    num = exp->num;
+}
+
+void InitValAST::generateIR(std::ostream &os) {
+    exp->generateIR(os);
+}
+
 ExpAST::ExpAST(BaseAST *ast) : ExpBaseAST(false), lOrExp(ast) {
     name = lOrExp->name;
 }
@@ -558,11 +642,11 @@ void ExpAST::spreadSymbolTable() {
     lOrExp->spreadSymbolTable();
     if (lOrExp->isNum) {
         isNum = true;
-        num = lOrExp->num;
     } else {
         isNum = false;
         name = lOrExp->name;
     }
+    num = lOrExp->num;
 }
 
 ExpBaseAST1::ExpBaseAST1(BaseAST *ast) : ExpBaseAST(false), delegate(ast) {
@@ -578,11 +662,11 @@ void ExpBaseAST1::spreadSymbolTable() {
     delegate->spreadSymbolTable();
     if (delegate->isNum) {
         isNum = true;
-        num = delegate->num;
     } else {
         isNum = false;
         name = delegate->name;
     }
+    num = delegate->num;
 }
 
 
@@ -612,21 +696,25 @@ void ExpBaseAST2::spreadSymbolTable() {
     right->spreadSymbolTable();
     if (left->isNum && right->isNum) {
         isNum = true;
-        if (op == "lt") { num = left->num < right->num; }
-        if (op == "gt") { num = left->num > right->num; }
-        if (op == "le") { num = left->num <= right->num; }
-        if (op == "ge") { num = left->num >= right->num; }
-        if (op == "add") { num = left->num + right->num; }
-        if (op == "sub") { num = left->num - right->num; }
-        if (op == "mul") { num = left->num * right->num; }
-        if (op == "div") { num = left->num / right->num; }
-        if (op == "mod") { num = left->num % right->num; }
-        if (op == "eq") { num = left->num == right->num; }
-        if (op == "ne") { num = left->num != right->num; }
     } else {
         isNum = false;
         name = "%" + std::to_string(++ExpBaseAST::expNum);
     }
+    if (op == "lt") { num = left->num < right->num; }
+    if (op == "gt") { num = left->num > right->num; }
+    if (op == "le") { num = left->num <= right->num; }
+    if (op == "ge") { num = left->num >= right->num; }
+    if (op == "add") { num = left->num + right->num; }
+    if (op == "sub") { num = left->num - right->num; }
+    if (op == "mul") { num = left->num * right->num; }
+    if (op == "div") {
+        if (right->num == 0) { num = 0; } else { num = left->num / right->num; }
+    }
+    if (op == "mod") {
+        if (right->num == 0) { num = 0; } else { num = left->num % right->num; }
+    }
+    if (op == "eq") { num = left->num == right->num; }
+    if (op == "ne") { num = left->num != right->num; }
 
 }
 
@@ -666,11 +754,11 @@ void LOrExpAST2::spreadSymbolTable() {
     right->spreadSymbolTable();
     if (left->isNum && right->isNum) {
         isNum = true;
-        num = left->num || right->num;
     } else {
         isNum = false;
         name = "%" + std::to_string(++ExpBaseAST::expNum);
     }
+    num = left->num || right->num;
 
 }
 
@@ -709,11 +797,11 @@ void LAndExpAST2::spreadSymbolTable() {
     right->spreadSymbolTable();
     if (left->isNum && right->isNum) {
         isNum = true;
-        num = left->num && right->num;
     } else {
         isNum = false;
         name = "%" + std::to_string(++ExpBaseAST::expNum);
     }
+    num = left->num && right->num;
 
 }
 
@@ -731,12 +819,11 @@ void UnaryExpAST1::spreadSymbolTable() {
     primaryExp->spreadSymbolTable();
     if (primaryExp->isNum) {
         isNum = true;
-        num = primaryExp->num;
     } else {
         isNum = false;
     }
     name = primaryExp->name;
-
+    num = primaryExp->num;
 }
 
 UnaryExpAST2::UnaryExpAST2(std::string *opt, BaseAST *ast) : ExpBaseAST(true), unaryExp(ast), op(*opt) {}
@@ -762,13 +849,6 @@ void UnaryExpAST2::spreadSymbolTable() {
     unaryExp->spreadSymbolTable();
     if (unaryExp->isNum) {
         isNum = true;
-        if (op == "add") {
-            num = unaryExp->num;
-        } else if (op == "sub") {
-            num = -unaryExp->num;
-        } else if (op == "not") {
-            num = (0 == unaryExp->num);
-        }
     } else {
         if (op != "add") {
             name = "%" + std::to_string(++ExpBaseAST::expNum);
@@ -777,6 +857,66 @@ void UnaryExpAST2::spreadSymbolTable() {
         }
     }
 
+    if (op == "add") {
+        num = unaryExp->num;
+    } else if (op == "sub") {
+        num = -unaryExp->num;
+    } else if (op == "not") {
+        num = (0 == unaryExp->num);
+    }
+
+}
+
+UnaryExpAST3::UnaryExpAST3(std::string *id, BaseAST *ast):ExpBaseAST(true), ident("@" + *id),funcRParamList(ast){}
+void UnaryExpAST3::generateIR(std::ostream &os){
+    if (funcRParamList) { funcRParamList->generateIR(os); }
+    std::string func_name = getSymbolName(ident);
+    os << "\t";
+    if (!isVoid){
+        os << name << " = ";
+    }
+    os << "call " << func_name << "(";
+    if (funcRParamList) { std::dynamic_pointer_cast<FuncRParamListAST>(funcRParamList)->generateParam(os); }
+    os << ")\n";
+}
+void UnaryExpAST3::spreadSymbolTable(){
+    //std::cout << "#####" << ident <<std::endl;
+    if (funcRParamList) {
+        funcRParamList->symbolTable = symbolTable;
+        funcRParamList->spreadSymbolTable();
+    }
+    isNum = false;
+    if (symbolTable[ident]->type == "void"){
+        isVoid = true;
+    }
+    else{
+        //std::cout << "#####ok1" << ident <<std::endl;
+        name = "%" + std::to_string(++ExpBaseAST::expNum);
+        //std::cout << "#####ok2" <<ident << std::endl;
+        isVoid = false;
+    }
+}
+
+FuncRParamListAST::FuncRParamListAST(BaseAST *ast1, BaseAST *ast2):exp(ast1),funcRParamList(ast2){}
+void FuncRParamListAST::generateIR(std::ostream &os){
+    if (!exp->isNum) { exp->generateIR(os); }
+    if (funcRParamList) {funcRParamList->generateIR(os);}
+}
+void FuncRParamListAST::generateParam(std::ostream &os){
+    if (exp->isNum){ os << exp->num; }
+    else{ os << exp->name; }
+    if (funcRParamList){
+        os << ", ";
+        std::dynamic_pointer_cast<FuncRParamListAST>(funcRParamList)->generateParam(os);
+    }
+}
+void FuncRParamListAST::spreadSymbolTable(){
+    exp->symbolTable = symbolTable;
+    exp->spreadSymbolTable();
+    if (funcRParamList) {
+        funcRParamList->symbolTable = symbolTable;
+        funcRParamList->spreadSymbolTable();
+    }
 }
 
 PrimaryExpAST1::PrimaryExpAST1(int n) : ExpBaseAST(false) {
@@ -792,23 +932,20 @@ void PrimaryExpAST1::spreadSymbolTable() {
 PrimaryExpAST2::PrimaryExpAST2(BaseAST *ast) : ExpBaseAST(false), exp(ast) {
     if (exp->isNum) {
         isNum = true;
-        num = exp->num;
     }
     name = exp->name;
 }
-
 void PrimaryExpAST2::generateIR(std::ostream &os) {
     exp->generateIR(os);
 }
-
 void PrimaryExpAST2::spreadSymbolTable() {
     exp->symbolTable = symbolTable;
     exp->spreadSymbolTable();
     if (exp->isNum) {
         isNum = true;
-        num = exp->num;
     }
     name = exp->name;
+    num = exp->num;
 }
 
 PrimaryExpAST3::PrimaryExpAST3(std::string *id) : ident("@" + *id) {
@@ -820,15 +957,13 @@ void PrimaryExpAST3::spreadSymbolTable() {
     std::shared_ptr <SymbolInfo> symbol = symbolTable[ident];
     if (symbol->isNum) {
         isNum = true;
-        num = symbol->num;
     } else {
         isNum = false;
         name = "%" + std::to_string(++ExpBaseAST::expNum);
     }
-
+    num = symbol->num;
     return;
 }
-
 void PrimaryExpAST3::generateIR(std::ostream &os) {
     if (!isNum) {
         os << "\t" << name << " = load " << symbolTable[ident]->name << "\n";

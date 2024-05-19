@@ -5,8 +5,8 @@
 #include "auxiliary.h"
 
 
-SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt, int constNumt) : type(typet), isNum(isConstt),
-                                                                                          num(constNumt), ident(id) {
+SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt, int initNumt) : type(typet), isFunc(false), isNum(isConstt),
+                                                                                          num(initNumt), ident(id) {
     if (mapNameIndex.contains(id)) {
         ++mapNameIndex[id];
     } else {
@@ -15,7 +15,8 @@ SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt, int con
     name = id + "_" + std::to_string(mapNameIndex[id]);
 }
 
-SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt) : type(typet), isNum(isConstt), ident(id) {
+SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt) : type(typet), isFunc(false), isNum(isConstt),
+                                                                            num(0), ident(id) {
     if (mapNameIndex.contains(id)) {
         ++mapNameIndex[id];
     } else {
@@ -24,12 +25,17 @@ SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt) : type(
     name = id + "_" + std::to_string(mapNameIndex[id]);
 }
 
-SymbolInfo::SymbolInfo(std::string id, std::string typet) : type(typet), isNum(isConstt), ident(id){
-
+SymbolInfo::SymbolInfo(std::string id, std::string typet) : type(typet), isFunc(true), isNum(false), ident(id){
+    if (mapNameIndex.contains(id)) {
+        ++mapNameIndex[id];
+    } else {
+        mapNameIndex[id] = 0;
+    }
+    name = id;
 }
 
 
-FunctionInfo::FunctionInfo(const std::string &namet) : name(namet), isReturn(false) {}
+FunctionInfo::FunctionInfo(const std::string &namet, const std::string &typet): name(namet), type(typet), isReturn(false) {}
 
 
 BlockInfo::BlockInfo(std::string position):finish(false){

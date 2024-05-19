@@ -42,7 +42,7 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> GlobalDefList GlobalDef ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
+%type <ast_val> FuncRParamList GlobalDefList GlobalDef FuncFParamList FuncFParam ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
 %type <int_val> Number
 %type <str_val> UnaryOp Type LVal
 
@@ -287,6 +287,21 @@ UnaryExp
     }
     | UnaryOp UnaryExp {
         $$ = new UnaryExpAST2($1, $2);
+    }
+    | IDENT '(' ')'{
+        $$ = new UnaryExpAST3($1, nullptr);
+    }
+    | IDENT '(' FuncRParamList ')'{
+        $$ = new UnaryExpAST3($1, $3);
+    }
+    ;
+
+FuncRParamList
+    : Exp {
+        $$ = new FuncRParamListAST($1, nullptr);
+    }
+    | Exp ',' FuncRParamList {
+        $$ = new FuncRParamListAST($1, $3);
     }
     ;
 

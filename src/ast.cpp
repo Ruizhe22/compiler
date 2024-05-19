@@ -317,12 +317,14 @@ void StmtAST1::generateIR(std::ostream &os) {
 }
 
 void StmtAST1::spreadSymbolTable() {
-    exp->symbolTable = symbolTable;
-    exp->spreadSymbolTable();
-    if (exp->isNum) {
-        isNum = true;
+    if (exp){
+        exp->symbolTable = symbolTable;
+        exp->spreadSymbolTable();
+        if (exp->isNum) {
+            isNum = true;
+        }
+        num = exp->num;
     }
-    num = exp->num;
 }
 
 

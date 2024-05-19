@@ -85,8 +85,8 @@ ExpBaseAST::ExpBaseAST(bool fresh) : allocNewName(fresh) {}
 
 FuncDefAST::FuncDefAST(std::string *ft, std::string *id, BaseAST *p, BaseAST *b) : type(*ft), name("@" + *id), funcFParamList(p), block(b) {}
 void FuncDefAST::generateIR(std::ostream &os) {
-    ExpBaseAST::expNum = 0;
-    BlockInfo::mapBlockIndex.clear();
+    //ExpBaseAST::expNum = 0;
+    //BlockInfo::mapBlockIndex.clear();
     currentFunction = std::make_shared<FunctionInfo>(name, type);
     os << "fun " << name << "(";
     //生成参数列表
@@ -730,29 +730,46 @@ void ExpBaseAST2::spreadSymbolTable() {
 LOrExpAST2::LOrExpAST2(BaseAST *ast1, BaseAST *ast2) : ExpBaseAST(true), left(ast1), right(ast2) {}
 
 void LOrExpAST2::generateIR(std::ostream &os) {
-    std::string temp1 = "%lorl" + name.substr(1);
+    std::string temp1 = "%lort" + name.substr(1);
     std::string temp2 = "%lorr" + name.substr(1);
-    if (left->isNum && right->isNum) {
-        os << "\t" << temp1 << " = ne 0," << left->num << "\n";
-        os << "\t" << temp2 << " = ne 0," << right->num << "\n";
-        os << "\t" << name << " =  or " << temp1 << ", " << temp2 << "\n";
-    } else if (!left->isNum && right->isNum) {
+    std::string result = "%lorv" + name.substr(1);
+    os << "\t" << result << " = alloc " << "i32\n" ;
+    std::shared_ptr<BlockInfo> leftBlock = std::make_shared<BlockInfo>("left_true");
+    std::shared_ptr<BlockInfo> rightBlock = std::make_shared<BlockInfo>("right");
+    std::shared_ptr<BlockInfo> endBlock = std::make_shared<BlockInfo>("or_end");
+    if (!left->isNum){
         left->generateIR(os);
-        os << "\t" << temp1 << " = ne 0," << left->name << "\n";
-        os << "\t" << temp2 << " = ne 0," << right->num << "\n";
-        os << "\t" << name << " =  or " << temp1 << ", " << temp2 << "\n";
-    } else if (left->isNum && !right->isNum) {
-        right->generateIR(os);
-        os << "\t" << temp1 << " = ne 0," << left->num << "\n";
-        os << "\t" << temp2 << " = ne 0," << right->name << "\n";
-        os << "\t" << name << " =  or " << temp1 << ", " << temp2 << "\n";
-    } else {
-        left->generateIR(os);
-        right->generateIR(os);
-        os << "\t" << temp1 << " = ne 0," << left->name << "\n";
-        os << "\t" << temp2 << " = ne 0," << right->name << "\n";
-        os << "\t" << name << " =  or " << temp1 << ", " << temp2 << "\n";
+        os << "\tbr " << left->name << ", " << leftBlock->name << ", " << rightBlock->name << "\n";
     }
+    else {
+        os << "\tbr " << left->num << ", " << leftBlock->name << ", " << rightBlock->name << "\n";
+    }
+
+    leftBlock->generateIR(os);
+    currentBlock = leftBlock;
+    os << "\tstore " << 1 << ", " << result << "\n";
+    os << "\t" << "jump " << endBlock->name <<"\n";
+    currentBlock->finish = true;
+
+    rightBlock->generateIR(os);
+    currentBlock = rightBlock;
+    if (!right->isNum){
+        right->generateIR(os);
+        os << "\t" << temp2 << " = ne 0," << right->name << "\n";
+        os << "\t" << temp1 << " =  or " << 0 << ", " << temp2 << "\n";
+        os << "\tstore " << temp1 << ", " << result << "\n";
+    }
+    else {
+        os << "\t" << temp2 << " = ne 0," << right->num << "\n";
+        os << "\t" << temp1 << " =  or " << 0 << ", " << temp2 << "\n";
+        os << "\tstore " << temp1 << ", " << result << "\n";
+    }
+    os << "\t" << "jump " << endBlock->name <<"\n";
+    currentBlock->finish = true;
+
+    endBlock->generateIR(os);
+    currentBlock = endBlock;
+    os << "\t" << name << " = load " << result << "\n";
 }
 
 void LOrExpAST2::spreadSymbolTable() {
@@ -773,29 +790,49 @@ void LOrExpAST2::spreadSymbolTable() {
 LAndExpAST2::LAndExpAST2(BaseAST *ast1, BaseAST *ast2) : ExpBaseAST(true), left(ast1), right(ast2) {}
 
 void LAndExpAST2::generateIR(std::ostream &os) {
-    std::string temp1 = "%landl" + name.substr(1);
+    std::string temp1 = "%landt" + name.substr(1);
     std::string temp2 = "%landr" + name.substr(1);
-    if (left->isNum && right->isNum) {
-        os << "\t" << temp1 << " = ne 0," << left->num << "\n";
-        os << "\t" << temp2 << " = ne 0," << right->num << "\n";
-        os << "\t" << name << " =  and " << temp1 << ", " << temp2 << "\n";
-    } else if (!left->isNum && right->isNum) {
+    std::string result = "%landv" + name.substr(1);
+    os << "\t" << result << " = alloc " << "i32\n" ;
+
+    std::shared_ptr<BlockInfo> leftBlock = std::make_shared<BlockInfo>("left_false");
+    std::shared_ptr<BlockInfo> rightBlock = std::make_shared<BlockInfo>("right");
+    std::shared_ptr<BlockInfo> endBlock = std::make_shared<BlockInfo>("and_end");
+    if (!left->isNum){
         left->generateIR(os);
-        os << "\t" << temp1 << " = ne 0," << left->name << "\n";
-        os << "\t" << temp2 << " = ne 0," << right->num << "\n";
-        os << "\t" << name << " =  and " << temp1 << ", " << temp2 << "\n";
-    } else if (left->isNum && !right->isNum) {
-        right->generateIR(os);
-        os << "\t" << temp1 << " = ne 0," << left->num << "\n";
-        os << "\t" << temp2 << " = ne 0," << right->name << "\n";
-        os << "\t" << name << " =  and " << temp1 << ", " << temp2 << "\n";
-    } else {
-        left->generateIR(os);
-        right->generateIR(os);
-        os << "\t" << temp1 << " = ne 0," << left->name << "\n";
-        os << "\t" << temp2 << " = ne 0," << right->name << "\n";
-        os << "\t" << name << " =  and " << temp1 << ", " << temp2 << "\n";
+        os << "\tbr " << left->name << ", " << rightBlock->name << ", " << leftBlock->name << "\n";
     }
+    else {
+        os << "\tbr " << left->num << ", " << rightBlock->name << ", " << leftBlock->name << "\n";
+    }
+
+    leftBlock->generateIR(os);
+    currentBlock = leftBlock;
+    os << "\tstore " << 0 << ", " << result << "\n";
+
+    os << "\t" << "jump " << endBlock->name <<"\n";
+    currentBlock->finish = true;
+
+    rightBlock->generateIR(os);
+    currentBlock = rightBlock;
+    if (!right->isNum){
+        right->generateIR(os);
+        os << "\t" << temp2 << " = ne 0," << right->name << "\n";
+        os << "\t" << temp1 << " =  and " << 1 << ", " << temp2 << "\n";
+        os << "\tstore " << temp1 << ", " << result << "\n";
+    }
+    else {
+        os << "\t" << temp2 << " = ne 0," << right->num << "\n";
+        os << "\t" << temp1 << " =  and " << 1 << ", " << temp2 << "\n";
+        os << "\tstore " << temp1 << ", " << result << "\n";
+    }
+    os << "\t" << "jump " << endBlock->name <<"\n";
+    currentBlock->finish = true;
+
+    endBlock->generateIR(os);
+    currentBlock = endBlock;
+    os << "\t" << name << " = load " << result << "\n";
+
 }
 
 void LAndExpAST2::spreadSymbolTable() {

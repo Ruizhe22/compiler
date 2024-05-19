@@ -300,11 +300,17 @@ StmtAST1::StmtAST1(BaseAST *ast) : exp(ast) {}
 StmtAST1::StmtAST1() = default;
 
 void StmtAST1::generateIR(std::ostream &os) {
-    if (exp->isNum) {
-        os << "\tret " << exp->num << "\n";
-    } else {
-        exp->generateIR(os);
-        os << "\tret " << exp->name << "\n";
+    if (exp){
+        if (exp->isNum) {
+            os << "\tret " << exp->num << "\n";
+        } else {
+            exp->generateIR(os);
+            os << "\tret " << exp->name << "\n";
+        }
+    }
+    else {
+        if (currentFunction->type == "void"){ os << "\tret\n"; }
+        else{ os << "\tret 0\n"; }
     }
     currentFunction->isReturn = true;
     currentBlock->finish = true;

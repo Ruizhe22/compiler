@@ -321,8 +321,8 @@ void StmtAST1::spreadSymbolTable() {
     exp->spreadSymbolTable();
     if (exp->isNum) {
         isNum = true;
-        num = exp->num;
     }
+    num = exp->num;
 }
 
 

@@ -22,7 +22,7 @@ class AsmGenerator{
 public:
     AsmGenerator(std::stringstream &ss, std::ostream &os);
     void generateRiscv();
-    std::shared_ptr<Function> currentFunciton;
+    std::shared_ptr<Function> currentFunction;
     std::unordered_map<std::string, std::shared_ptr<Function>> mapFunction;
 private:
     std::stringstream &koopa;
@@ -42,9 +42,11 @@ private:
     void storeHandler(const koopa_raw_value_t &value);
     void branchHandler(const koopa_raw_value_t &value);
     void jumpHandler(const koopa_raw_value_t &value);
+    void globalAllocHandler(const koopa_raw_value_t &value);
+    void callHandler(const koopa_raw_value_t &value);
 
-    std::string generateLoad(int src_offset, std::string dstReg, std::shared_ptr<Function> currentFunciton);
-    std::string generateStore(int dst_offset, std::string srcReg, std::shared_ptr<Function> currentFunciton);
+    std::string generateLw(int src_offset, std::string dstReg, std::string base = "fp");
+    std::string generateSw(int dst_offset, std::string srcReg, std::string base = "fp");
 };
 
 #endif //COMPILER_GENERATE_ASM_H

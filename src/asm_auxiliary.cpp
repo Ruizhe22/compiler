@@ -3,12 +3,7 @@
 //
 
 #include "asm_auxiliary.h"
-Function::Function():sp(0)
-{
-    initRegSet();
-}
-
-Function::Function(std::string namet):name(namet),sp(0)
+Function::Function(const koopa_raw_function_t &funct):func(funct),sp(-4)
 {
     initRegSet();
 }
@@ -54,6 +49,16 @@ int Function::allocMem(const koopa_raw_value_t &value)
     sp-=4;
     return (mapAllocMem[value] = sp);
 }
+
+int Function::paramIndex(koopa_raw_value_t v){
+    int i = 0;
+    for(; i < func->params.len; ++i){
+        if(func->params.buffer[i] == (void *)v)
+            break;
+    }
+    return i;
+}
+
 
 AsmTempLabel AsmTempLabel::globalLabel;
 

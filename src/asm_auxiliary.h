@@ -16,10 +16,10 @@
 
 class Function{
 public:
-    Function(std::string namet);
-    Function();
+    Function(const koopa_raw_function_t &funct);
 private:
     std::string name;
+    const koopa_raw_function_t func;
     // koopa var to register t0 - t6
     std::unordered_map<koopa_raw_value_t, std::string> mapAllocReg;
     // 相较于fp，为负数
@@ -35,6 +35,8 @@ public:
     void restoreReg(const std::string &);
     // for some value which is not unit, alloc memory, update mapAllocMem and esp
     int allocMem(const koopa_raw_value_t &);
+    int paramIndex(koopa_raw_value_t v);
+
     int sp;
 };
 

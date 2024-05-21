@@ -42,7 +42,7 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> FuncRParamList GlobalDefList GlobalDef FuncFParamList FuncFParam ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
+%type <ast_val> ArrayIndexList ArrayIndex ArrayAccess FuncRParamList GlobalDefList GlobalDef FuncFParamList FuncFParam ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
 %type <int_val> Number
 %type <str_val> UnaryOp Type LVal
 
@@ -148,6 +148,9 @@ Stmt
   }
   | CONTINUE ';'{
         $$ = new StmtAST7();
+  }
+  | ArrayAccess '=' Exp ';'{
+        $$ = new StmtAST8($1, $3);
   }
   ;
 
@@ -315,6 +318,9 @@ PrimaryExp
     | LVal {
         $$ = new PrimaryExpAST3($1);
     }
+    | ArrayAccess {
+        $$ = new PrimaryExpAST4($1);
+    }
     ;
 
 
@@ -347,6 +353,30 @@ ConstDef
     : IDENT '=' ConstInitVal{
         $$ = new ConstDefAST($1,$3);
     }
+    | IDENT ArrayIndexList '=' ConstInitVal{
+
+    }
+    ;
+
+ConstInitVal
+    : ConstExp{
+        $$ = new ConstInitValAST1($1);
+    }
+    |'{' '}' {
+        $$ = new ConstInitValAST2();
+    }
+    | '{' ConstInitValList '}' {
+        $$ = new ConstInitValAST2($2);
+    }
+    ;
+
+ConstInitValList
+	: ConstInitVal {
+		$$ = ConstInitValListAST($1,nullptr);
+	}
+	| ConstInitVal ',' ConstInitValList {
+		$$ = ConstInitValListAST($1,$3);
+	}
     ;
 
 VarDecl
@@ -366,10 +396,16 @@ VarDefList
 
 VarDef
     : IDENT {
-        $$ = new VarDefAST($1);
+        $$ = new VarDefAST1($1);
     }
     | IDENT '=' InitVal {
-        $$ = new VarDefAST($1,$3);
+        $$ = new VarDefAST1($1,$3);
+    }
+    | IDENT ArrayIndexList {
+		$$ = new VarDefAST2($1,$2, nullptr);
+    }
+    | IDENT ArrayIndexList '=' InitVal {
+        $$ = new VarDefAST2($1,$2,$4);
     }
     ;
 
@@ -388,17 +424,16 @@ Type
     }
     ;
 
-ConstInitVal
-    : ConstExp{
-        $$ = new ConstInitValAST($1);
-    }
-    ;
-
 LVal
     : IDENT {
        $$ = $1;
     }
     ;
+
+ArrayAccess
+    : IDENT ArrayIndexList {
+        $$ = new ArrayAccessAST($1,$2);
+    }
 
 ConstExp
     : Exp{
@@ -406,10 +441,18 @@ ConstExp
     }
     ;
 
+ArrayIndexList
+    : ArrayIndex {
+        $$ = new ArrayIndexListAST($1, nullptr);
+    }
+    | ArrayIndex ArrayIndexList {
+        $$ = new ArrayIndexListAST($1, $2);
+    }
 
-
-
-
+ArrayIndex
+    : '[' Exp ']' {
+        $$ = new ArrayIndexAST($2);
+    }
 
 %%
 

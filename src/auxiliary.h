@@ -12,6 +12,7 @@
 #include <string>
 #include <unordered_map>
 #include <stack>
+#include <deque>
 
 class SymbolInfo{
 public:
@@ -22,6 +23,10 @@ public:
     SymbolInfo(std::string id, std::string typet, bool isConstt);
     // for func
     SymbolInfo(std::string id, std::string typet);
+    // for array
+    SymbolInfo(std::string id, std::string typet, const std::deque<int> &dimt);
+    std::deque<int> dim;
+
 
     std::string name;
     std::string type;

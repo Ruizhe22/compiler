@@ -84,6 +84,8 @@ void AsmGenerator::visitRawFunction(const koopa_raw_function_t &func)
         mapFunction[funcName] = currentFunction;
     }
     // 更新帧指针
+    ofs << "\taddi sp, sp, -4\n";
+    ofs << "\tsw fp, 0(sp)\n";
     ofs << "\tmv fp, sp" << "\n";
     oss << generateSw(-4, "ra");
     // 访问所有基本块
@@ -152,20 +154,23 @@ void AsmGenerator::visitRawValue(const koopa_raw_value_t &value)
 
 void AsmGenerator::retHandler(const koopa_raw_value_t &value)
 {
-
     koopa_raw_return_t inst = value->kind.data.ret;
-    koopa_raw_value_kind_t kind = inst.value->kind;
-    switch (kind.tag) {
-        case KOOPA_RVT_INTEGER:
-            oss << "\tli a0, " << kind.data.integer.value << "\n";
-            break;
-        default:
-            oss << generateLw(currentFunction->mapAllocMem[inst.value],"a0");
-            //assert(false);
+    if (inst.value) {
+        koopa_raw_value_kind_t kind = inst.value->kind;
+        switch (kind.tag) {
+            case KOOPA_RVT_INTEGER:
+                oss << "\tli a0, " << kind.data.integer.value << "\n";
+                break;
+            default:
+                oss << generateLw(currentFunction->mapAllocMem[inst.value], "a0");
+                //assert(false);
+        }
     }
     oss << generateLw(-4, "ra");
     oss << "\tmv sp, fp" << "\n";
-    oss << "\tret\n\n\n";
+    oss << "\tlw fp, 0(sp)\n";
+    oss << "\taddi sp, sp, 4\n";
+    oss << "\tret\n\n";
 
 }
 
@@ -370,8 +375,8 @@ void AsmGenerator::storeHandler(const koopa_raw_value_t &value)
             currentFunction->restoreReg(stempReg);
             return;
         } else {
-            int arg_fp_offset = (i - 9) * 4;
-            generateLw(arg_fp_offset, stempReg);
+            int arg_fp_offset = (i - 7) * 4;
+            oss << generateLw(arg_fp_offset, stempReg);
         }
     }
     else{
@@ -430,16 +435,16 @@ void AsmGenerator::jumpHandler(const koopa_raw_value_t &value)
 
 void AsmGenerator::globalAllocHandler(const koopa_raw_value_t &value)
 {
-    oss << "\t.data\n";
-    oss << "\t.globl " << value->name + 1 << "\n";
-    oss << value->name + 1 << ":\n";
+    ofs << "\t.data\n";
+    ofs << "\t.globl " << value->name + 1 << "\n";
+    ofs << value->name + 1 << ":\n";
     koopa_raw_value_t init = value->kind.data.global_alloc.init;
     const struct koopa_raw_type_kind * pointerBase = value->ty->data.pointer.base;
     if(pointerBase->tag == KOOPA_RTT_INT32){
         if(init->kind.tag == KOOPA_RVT_ZERO_INIT){
-            oss << "\t.zero 4\n\n";
+            ofs << "\t.zero 4\n\n";
         } else {
-            oss << "\t.word " << init->kind.data.integer.value << "\n\n";
+            ofs << "\t.word " << init->kind.data.integer.value << "\n\n";
         }
     } else{
         assert (init->kind.tag == KOOPA_RVT_AGGREGATE) ;
@@ -472,7 +477,8 @@ void AsmGenerator::callHandler(const koopa_raw_value_t &value)
                 oss << generateSw((i - 8) * 4, tempReg, "sp");
                 currentFunction->restoreReg(tempReg);
             }
-        } else{
+        }
+        else{
             //std::cout << "####" << std::endl;
             if(i < 8){
                 oss << generateLw(currentFunction->mapAllocMem[arg], "a" + std::to_string(i));

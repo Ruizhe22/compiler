@@ -531,8 +531,16 @@ ConstDefAST2::ConstDefAST2(std::string *id, BaseAST *index, BaseAST *init):array
     arrayIndexDeque = a->arrayIndexDeque;
 }
 void ConstDefAST2::generateIR(std::ostream &os){
-    os << "\t" << getSymbolName(name) << " = alloc " << std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->dim->type << "\n";
-    generateInitIR(os,getSymbolName(name),arrayIndexDeque,constInitValDeque);
+    if (currentFunction) {
+        os << "\t" << getSymbolName(name) << " = alloc " << std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->dim->type << "\n";
+        generateInitIR(os, getSymbolName(name), arrayIndexDeque,constInitValDeque);
+    }
+    else{
+        os << "global " << getSymbolName(name) << " = alloc " << std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->dim->type << ", ";
+        generateAggregateIR(os,arrayIndexDeque,constInitValDeque);
+        os << "\n\n";
+    }
+
 }
 void ConstDefAST2::generateInitIR(std::ostream &os, std::string arrayBase,
                                   std::deque<std::shared_ptr<BaseAST>> index, std::deque<std::shared_ptr<BaseAST>> &init){
@@ -571,6 +579,62 @@ void ConstDefAST2::generateInitIR(std::ostream &os, std::string arrayBase,
         }
     }
 }
+void ConstDefAST2::generateAggregateIR(std::ostream &os, std::deque<std::shared_ptr<BaseAST>> index, std::deque<std::shared_ptr<BaseAST>> &init){
+    os << "{";
+    std::shared_ptr<BaseAST> firstIndex = index.front();
+    index.pop_front();
+    if(index.empty()){
+        if(!init.empty()){
+            os << init.front()->num;
+            init.pop_front();
+        }
+        else{
+            os << 0;
+        }
+        for(int i = 1; i < std::dynamic_pointer_cast<ArrayIndexAST>(firstIndex)->dim->dimLength ;++i){
+            if(!init.empty()){
+                os << "," << init.front()->num;
+                init.pop_front();
+            }
+            else{
+                os << "," << 0;
+            }
+        }
+    }
+    else{
+        if(init.empty()){
+            generateAggregateIR(os,index,init);
+        }
+        else{
+            if(std::dynamic_pointer_cast<ConstInitValAST2>(init.front())){
+                std::shared_ptr<BaseAST> aggre = init.front();
+                init.pop_front();
+                generateAggregateIR(os,index,std::dynamic_pointer_cast<ConstInitValAST2>(aggre)->constInitValDeque);
+            }
+            else{
+                generateAggregateIR(os,index,init);
+            }
+        }
+        for(int i = 1; i < std::dynamic_pointer_cast<ArrayIndexAST>(firstIndex)->dim->dimLength ;++i){
+            os << ", ";
+            if(init.empty()){
+                generateAggregateIR(os,index,init);
+            }
+            else{
+                if(std::dynamic_pointer_cast<ConstInitValAST2>(init.front())){
+                    std::shared_ptr<BaseAST> aggre = init.front();
+                    init.pop_front();
+                    generateAggregateIR(os,index,std::dynamic_pointer_cast<ConstInitValAST2>(aggre)->constInitValDeque);
+                }
+                else{
+                    generateAggregateIR(os,index,init);
+                }
+            }
+        }
+    }
+    os << "}";
+}
+
 void ConstDefAST2::spreadSymbolTable(){
     arrayIndexList->symbolTable = symbolTable;
     arrayIndexList->spreadSymbolTable();

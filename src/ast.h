@@ -302,6 +302,7 @@ public:
     void generateIR(std::ostream &os);
     void spreadSymbolTable();
     static void generateInitIR(std::ostream &os, std::string arrayBase, std::deque<std::shared_ptr<BaseAST>> index, std::deque<std::shared_ptr<BaseAST>> &init);
+    static void generateAggregateIR(std::ostream &os, std::deque<std::shared_ptr<BaseAST>> index, std::deque<std::shared_ptr<BaseAST>> &init);
     std::shared_ptr<BaseAST> arrayIndexList;
     std::shared_ptr<BaseAST> constInitVal;
     std::deque<std::shared_ptr<BaseAST>> arrayIndexDeque;

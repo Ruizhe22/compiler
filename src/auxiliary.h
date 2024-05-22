@@ -34,11 +34,13 @@ public:
     SymbolInfo(std::string id, std::string typet, bool isConstt);
     // for func
     SymbolInfo(std::string id, std::string typet);
+    SymbolInfo(std::string id, std::shared_ptr<DimInfo> dimt, bool array, int dn);
     // for array
-    std::deque<std::shared_ptr<DimInfo>> dimList;
-
+    std::shared_ptr<DimInfo> dim;
     std::string name;
     std::string type;
+    bool isArray;
+    int dimNum;
     bool isFunc;
     // isNum表示是不是const变量
     bool isNum;

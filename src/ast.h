@@ -122,6 +122,17 @@ public:
     std::string name;
 };
 
+class FuncFParamAST2 : public BaseAST {
+public:
+    FuncFParamAST2(std::string *t, std::string *id, BaseAST *a);
+    void generateIR(std::ostream &os);
+    void generateParamIR(std::ostream &os);
+    void spreadSymbolTable();
+    std::string type;
+    std::string name;
+    BaseAST *arrayIndexList;
+};
+
 class ExtendStmtAST: public BaseAST {
 public:
     ExtendStmtAST(BaseAST *ast);
@@ -343,10 +354,12 @@ class ArrayIndexListAST:public BaseAST{
 public:
     ArrayIndexListAST(BaseAST *a, BaseAST *l);
     void spreadSymbolTable();
+
     //arrayindexast deque
     std::shared_ptr<BaseAST> arrayIndex;
     std::shared_ptr<BaseAST> arrayIndexList;
     std::shared_ptr<DimInfo> dim;
+    // 全部的下标，每个都是ArrayIndexAST
     std::deque<std::shared_ptr<BaseAST>> arrayIndexDeque;
 };
 
@@ -357,6 +370,7 @@ public:
     void spreadSymbolTable();
     std::string ident;
     std::shared_ptr<BaseAST> arrayIndexList;
+    int dimNum;
 };
 
 

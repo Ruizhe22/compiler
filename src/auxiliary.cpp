@@ -14,7 +14,7 @@ DimInfo::DimInfo(int len):dimLength(len){
     type = "[" + elementType + ", " + std::to_string(dimLength) + "]";
 }
 
-SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt, int initNumt) : type(typet), isFunc(false), isNum(isConstt),
+SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt, int initNumt) : type(typet), isArray(false) ,isFunc(false), isNum(isConstt),
                                                                                           num(initNumt), ident(id) {
     if (mapNameIndex.contains(id)) {
         ++mapNameIndex[id];
@@ -24,7 +24,7 @@ SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt, int ini
     name = id + "_" + std::to_string(mapNameIndex[id]);
 }
 
-SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt) : type(typet), isFunc(false), isNum(isConstt),
+SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt) : type(typet), isArray(false) ,isFunc(false), isNum(isConstt),
                                                                             num(0), ident(id) {
     if (mapNameIndex.contains(id)) {
         ++mapNameIndex[id];
@@ -34,13 +34,22 @@ SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt) : type(
     name = id + "_" + std::to_string(mapNameIndex[id]);
 }
 
-SymbolInfo::SymbolInfo(std::string id, std::string typet) : type(typet), isFunc(true), isNum(false), ident(id){
+SymbolInfo::SymbolInfo(std::string id, std::string typet) : type(typet), isArray(false) ,isFunc(true), isNum(false), ident(id){
     if (mapNameIndex.contains(id)) {
         ++mapNameIndex[id];
     } else {
         mapNameIndex[id] = 0;
     }
     name = id;
+}
+//不是array就是形参
+SymbolInfo::SymbolInfo(std::string id, std::shared_ptr<DimInfo> dimt, bool array, int dn):dim(dimt),isArray(array),dimNum(dn),isFunc(false),isNum(false), ident(id){
+    if (mapNameIndex.contains(id)) {
+        ++mapNameIndex[id];
+    } else {
+        mapNameIndex[id] = 0;
+    }
+    name = id + "_" + std::to_string(mapNameIndex[id]);
 }
 
 
@@ -53,7 +62,7 @@ BlockInfo::BlockInfo(std::string position):finish(false){
     } else {
         mapBlockIndex[position] = 0;
     }
-    name = "%" + position + "_" + std::to_string(mapBlockIndex[position]);
+    name = "%" + position + "_bb" + std::to_string(mapBlockIndex[position]);
 }
 
 

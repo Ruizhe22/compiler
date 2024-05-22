@@ -133,20 +133,22 @@ void FuncDefAST::spreadSymbolTable() {
 }
 
 FuncFParamListAST::FuncFParamListAST(BaseAST *p, BaseAST *list) : funcFParam(p), funcFParamList(list) {}
-
 void FuncFParamListAST::generateParamIR(std::ostream &os) {
-    std::dynamic_pointer_cast<FuncFParamAST>(funcFParam)->generateParamIR(os);
+    if(std::dynamic_pointer_cast<FuncFParamAST>(funcFParam)){
+        std::dynamic_pointer_cast<FuncFParamAST>(funcFParam)->generateParamIR(os);
+    }
+    else{
+        std::dynamic_pointer_cast<FuncFParamAST2>(funcFParam)->generateParamIR(os);
+    }
     if (funcFParamList) {
         os << ", ";
         std::dynamic_pointer_cast<FuncFParamListAST>(funcFParamList)->generateParamIR(os);
     }
 }
-
 void FuncFParamListAST::generateIR(std::ostream &os) {
     funcFParam->generateIR(os);
     if (funcFParamList) { funcFParamList->generateIR(os); }
 }
-
 void FuncFParamListAST::spreadSymbolTable() {
     funcFParam->symbolTable = symbolTable;
     funcFParam->spreadSymbolTable();
@@ -158,13 +160,12 @@ void FuncFParamListAST::spreadSymbolTable() {
     }
 }
 
-FuncFParamAST::FuncFParamAST(std::string *t, std::string *id) : type(*t), name("@" + *id) {}
 
+FuncFParamAST::FuncFParamAST(std::string *t, std::string *id) : type(*t), name("@" + *id) {}
 void FuncFParamAST::generateParamIR(std::ostream &os) {
     //getSymbolName(name);
     os << getSymbolName(name) << ": " << type;
 }
-
 void FuncFParamAST::generateIR(std::ostream &os) {
     // %x = alloc i32
     // store @x, %x
@@ -174,10 +175,31 @@ void FuncFParamAST::generateIR(std::ostream &os) {
     os << "\t" << tempName << " = alloc " << type << "\n";
     os << "\tstore " << symbolName << ", " << tempName << "\n";
 }
-
 void FuncFParamAST::spreadSymbolTable() {
     symbolTable[name] = std::make_shared<SymbolInfo>(name, type, false);
     //std::cout << "###### " << symbolTable.size() << symbolTable.contains(name) << symbolTable.begin()->first << "\n";
+}
+
+FuncFParamAST2::FuncFParamAST2(std::string *t, std::string *id, BaseAST *a):type("*"+*t),name("@"+*id),arrayIndexList(a){}
+void FuncFParamAST2::generateIR(std::ostream &os){
+    std::string symbolName = getSymbolName(name);
+    std::string tempName = "%" + symbolName.substr(1);
+    symbolTable[name]->name = tempName;
+    os << "\t" << tempName << " = alloc " << type << "\n";
+    os << "\tstore " << symbolName << ", " << tempName << "\n";
+}
+void FuncFParamAST2::generateParamIR(std::ostream &os){
+    os << getSymbolName(name) << ": " << type;
+}
+void FuncFParamAST2::spreadSymbolTable(){
+    if(arrayIndexList) {
+        arrayIndexList->spreadSymbolTable();
+        type = "*" + static_cast<ArrayIndexListAST *>(arrayIndexList)->dim->type;
+        symbolTable[name] = std::make_shared<SymbolInfo>(name, static_cast<ArrayIndexListAST *>(arrayIndexList)->dim, false, static_cast<ArrayIndexListAST *>(arrayIndexList)->arrayIndexDeque.size()+1);
+    }
+    else {
+        symbolTable[name] = std::make_shared<SymbolInfo>(name, std::shared_ptr<DimInfo>(nullptr), false, 1);
+    }
 }
 
 ExtendStmtAST::ExtendStmtAST(BaseAST *ast) : stmt(ast) {}
@@ -650,7 +672,7 @@ void ConstDefAST2::spreadSymbolTable() {
         v->symbolTable = symbolTable;
         v->spreadSymbolTable();
     }
-    symbolTable[name] = std::make_shared<SymbolInfo>(name, type, false);
+    symbolTable[name] = std::make_shared<SymbolInfo>(name, std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->dim, true, arrayIndexDeque.size());
 }
 
 ConstInitValAST2::ConstInitValAST2(BaseAST *c) {
@@ -724,24 +746,111 @@ void ArrayIndexListAST::spreadSymbolTable() {
 }
 
 ArrayAccessAST::ArrayAccessAST(std::string *id, BaseAST *a) : ident("@" + *id), arrayIndexList(a) {
+    dimNum = std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->arrayIndexDeque.size();
 }
-
 void ArrayAccessAST::generateIR(std::ostream &os) {
-    std::string base = getSymbolName(ident);
-    std::string ptr;
-    for (auto &index: std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->arrayIndexDeque) {
-        ptr = "%" + std::to_string(++ExpBaseAST::expNum);
-        if (index->isNum) {
-            os << "\t" << ptr << " = getelemptr " << base << ", " << index->num << "\n";
-        } else {
-            index->generateIR(os);
-            os << "\t" << ptr << " = getelemptr " << base << ", " << index->name << "\n";
+    auto symbolInfo = symbolTable[ident];
+    if(dimNum >= symbolInfo->dimNum) {
+        if(symbolInfo->isArray) {
+            std::string base = getSymbolName(ident);
+            std::string ptr;
+            for (auto &index: std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->arrayIndexDeque) {
+                ptr = "%" + std::to_string(++ExpBaseAST::expNum);
+                if (index->isNum) {
+                    os << "\t" << ptr << " = getelemptr " << base << ", " << index->num << "\n";
+                } else {
+                    index->generateIR(os);
+                    os << "\t" << ptr << " = getelemptr " << base << ", " << index->name << "\n";
+                }
+                base = ptr;
+            }
+            name = ptr;
         }
-        base = ptr;
-    }
-    name = ptr;
-}
+        else{
 
+            std::string base = "%" + std::to_string(++ExpBaseAST::expNum);
+            os << "\t" << base << " = load " << getSymbolName(ident) << "\n";
+            std::string ptr;
+            int i = 0;
+            for (auto &index: std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->arrayIndexDeque) {
+                if(i==0){
+                    ptr = "%" + std::to_string(++ExpBaseAST::expNum);
+                    if (index->isNum) {
+                        os << "\t" << ptr << " = getptr " << base << ", " << index->num << "\n";
+                    } else {
+                        index->generateIR(os);
+                        os << "\t" << ptr << " = getptr " << base << ", " << index->name << "\n";
+                    }
+                    base = ptr;
+                }
+                else {
+                    ptr = "%" + std::to_string(++ExpBaseAST::expNum);
+                    if (index->isNum) {
+                        os << "\t" << ptr << " = getelemptr " << base << ", " << index->num << "\n";
+                    } else {
+                        index->generateIR(os);
+                        os << "\t" << ptr << " = getelemptr " << base << ", " << index->name << "\n";
+                    }
+                    base = ptr;
+                }
+                ++i;
+            }
+            name = ptr;
+        }
+    }
+    else { //params
+        if(symbolInfo->isArray) {
+            std::string base = getSymbolName(ident);
+            std::string ptr;
+            for (auto &index: std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->arrayIndexDeque) {
+                ptr = "%" + std::to_string(++ExpBaseAST::expNum);
+                if (index->isNum) {
+                    os << "\t" << ptr << " = getelemptr " << base << ", " << index->num << "\n";
+                } else {
+                    index->generateIR(os);
+                    os << "\t" << ptr << " = getelemptr " << base << ", " << index->name << "\n";
+                }
+                base = ptr;
+            }
+            //ptr = "%" + std::to_string(++ExpBaseAST::expNum);
+            //os << "\t" << ptr << " = getelemptr " << base << ", " << 0 << "\n";
+            name = ptr;
+        }
+        else{
+            //load + getptr + getelemptr 0
+            std::string base = "%" + std::to_string(++ExpBaseAST::expNum);
+            os << "\t" << base << " = load " << getSymbolName(ident) << "\n";
+            std::string ptr;
+            int i = 0;
+            for (auto &index: std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->arrayIndexDeque) {
+                if(i==0){
+                    ptr = "%" + std::to_string(++ExpBaseAST::expNum);
+                    if (index->isNum) {
+                        os << "\t" << ptr << " = getptr " << base << ", " << index->num << "\n";
+                    } else {
+                        index->generateIR(os);
+                        os << "\t" << ptr << " = getptr " << base << ", " << index->name << "\n";
+                    }
+                    base = ptr;
+                }
+                else {
+                    ptr = "%" + std::to_string(++ExpBaseAST::expNum);
+                    if (index->isNum) {
+                        os << "\t" << ptr << " = getelemptr " << base << ", " << index->num << "\n";
+                    } else {
+                        index->generateIR(os);
+                        os << "\t" << ptr << " = getelemptr " << base << ", " << index->name << "\n";
+                    }
+                    base = ptr;
+                }
+                ++i;
+            }
+            //ptr = "%" + std::to_string(++ExpBaseAST::expNum);
+            //os << "\t" << ptr << " = getelemptr " << base << ", " << 0 << "\n";
+            name = ptr;
+        }
+    }
+}
 void ArrayAccessAST::spreadSymbolTable() {
     arrayIndexList->symbolTable = symbolTable;
     arrayIndexList->spreadSymbolTable();
@@ -960,7 +1069,7 @@ void VarDefAST2::spreadSymbolTable() {
         v->symbolTable = symbolTable;
         v->spreadSymbolTable();
     }
-    symbolTable[name] = std::make_shared<SymbolInfo>(name, type, false);
+    symbolTable[name] = std::make_shared<SymbolInfo>(name, std::dynamic_pointer_cast<ArrayIndexListAST>(arrayIndexList)->dim, true, arrayIndexDeque.size());
 }
 
 InitValAST2::InitValAST2(BaseAST *c) {
@@ -1406,8 +1515,11 @@ void PrimaryExpAST3::spreadSymbolTable() {
 }
 
 void PrimaryExpAST3::generateIR(std::ostream &os) {
-    if (!isNum) {
+    if (!isNum && !symbolTable[ident]->isArray) {
         os << "\t" << name << " = load " << symbolTable[ident]->name << "\n";
+    }
+    else if (!isNum && symbolTable[ident]->isArray) {
+        os << "\t" << name << " = getelemptr " << symbolTable[ident]->name << ", " << 0 << "\n";
     }
 }
 
@@ -1421,7 +1533,15 @@ void PrimaryExpAST4::spreadSymbolTable() {
 }
 
 void PrimaryExpAST4::generateIR(std::ostream &os) {
-    arrayAccess->generateIR(os);
-    os << "\t" << name << " = load " << arrayAccess->name << "\n";
+    auto access = std::dynamic_pointer_cast<ArrayAccessAST>(arrayAccess);
+    auto symbolInfo = symbolTable[access->ident];
+    if(access->dimNum >= symbolInfo->dimNum) {
+        arrayAccess->generateIR(os);
+        os << "\t" << name << " = load " << arrayAccess->name << "\n";
+    }
+    else{
+        arrayAccess->generateIR(os);
+        os << "\t" << name << " = getelemptr " << arrayAccess->name << ", " << 0 << "\n";
+    }
 }
 

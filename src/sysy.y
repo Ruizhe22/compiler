@@ -94,6 +94,12 @@ FuncFParam
     : Type IDENT {
         $$ = new FuncFParamAST($1,$2);
     }
+    | Type IDENT '[' ']'{
+        $$ = new FuncFParamAST2($1,$2,nullptr);
+    }
+    | Type IDENT '[' ']' ArrayIndexList {
+        $$ = new FuncFParamAST2($1,$2,$5);
+    }
     ;
 
 Block

@@ -193,6 +193,7 @@ void FuncFParamAST2::generateParamIR(std::ostream &os){
 }
 void FuncFParamAST2::spreadSymbolTable(){
     if(arrayIndexList) {
+        arrayIndexList->symbolTable = symbolTable;
         arrayIndexList->spreadSymbolTable();
         type = "*" + static_cast<ArrayIndexListAST *>(arrayIndexList)->dim->type;
         symbolTable[name] = std::make_shared<SymbolInfo>(name, static_cast<ArrayIndexListAST *>(arrayIndexList)->dim, false, static_cast<ArrayIndexListAST *>(arrayIndexList)->arrayIndexDeque.size()+1);

@@ -42,7 +42,7 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> ConstInitValList ArrayIndexList ArrayIndex ArrayAccess FuncRParamList GlobalDefList GlobalDef FuncFParamList FuncFParam ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
+%type <ast_val> InitValList ConstInitValList ArrayIndexList ArrayIndex ArrayAccess FuncRParamList GlobalDefList GlobalDef FuncFParamList FuncFParam ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
 %type <int_val> Number
 %type <str_val> UnaryOp Type LVal
 
@@ -401,18 +401,33 @@ VarDef
     | IDENT '=' InitVal {
         $$ = new VarDefAST($1,$3);
     }
-    //| IDENT ArrayIndexList {
-	//	$$ = new VarDefAST2($1,$2, nullptr);
-    //}
-    //| IDENT ArrayIndexList '=' InitVal {
-    //    $$ = new VarDefAST2($1,$2,$4);
-    //}
+    | IDENT ArrayIndexList {
+		$$ = new VarDefAST2($1,$2, nullptr);
+    }
+    | IDENT ArrayIndexList '=' InitVal {
+        $$ = new VarDefAST2($1,$2,$4);
+    }
     ;
 
 InitVal
     : Exp {
         $$ = new InitValAST($1);
     }
+    |'{' '}' {
+        $$ = new InitValAST2(nullptr);
+    }
+    | '{' InitValList '}' {
+        $$ = new InitValAST2($2);
+    }
+    ;
+
+InitValList
+	: InitVal {
+		$$ = new InitValListAST($1,nullptr);
+	}
+	| InitVal ',' InitValList {
+		$$ = new InitValListAST($1,$3);
+	}
     ;
 
 Type

@@ -370,6 +370,30 @@ private:
     std::deque<std::shared_ptr<BaseAST>> constDefList;
 };
 
+class VarDefAST: public BaseAST{
+public:
+    VarDefAST(std::string *id);
+    VarDefAST(std::string *id, BaseAST *init);
+    void spreadSymbolTable();
+    void generateIR(std::ostream &os);
+private:
+    std::shared_ptr<BaseAST> initVal;
+    bool isInit;
+};
+
+class VarDefAST2: public BaseAST{
+public:
+    VarDefAST2(std::string *id, BaseAST *index, BaseAST *init);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+    static void generateInitIR(std::ostream &os, std::string arrayBase, std::deque<std::shared_ptr<BaseAST>> index, std::deque<std::shared_ptr<BaseAST>> &init);
+    static void generateAggregateIR(std::ostream &os, std::deque<std::shared_ptr<BaseAST>> index, std::deque<std::shared_ptr<BaseAST>> &init);
+    std::shared_ptr<BaseAST> arrayIndexList;
+    std::shared_ptr<BaseAST> initVal;
+    std::deque<std::shared_ptr<BaseAST>> arrayIndexDeque;
+    std::deque<std::shared_ptr<BaseAST>> initValDeque;
+};
+
 class InitValAST: public BaseAST{
 public:
     InitValAST(BaseAST *expt);
@@ -379,18 +403,19 @@ private:
     std::shared_ptr<BaseAST> exp;
 };
 
-
-class VarDefAST: public BaseAST{
+class InitValAST2: public BaseAST{
 public:
-    VarDefAST(std::string *id);
-    VarDefAST(std::string *id, BaseAST *init);
+    InitValAST2(BaseAST *c);
     void spreadSymbolTable();
-    void generateIR(std::ostream &os);
-    std::string type;
-private:
-    std::shared_ptr<BaseAST> initVal;
-    bool isInit;
+    std::deque<std::shared_ptr<BaseAST>> initValDeque;
 };
+
+class InitValListAST: public BaseAST{
+public:
+    InitValListAST(BaseAST *v , BaseAST *l);
+    std::deque<std::shared_ptr<BaseAST>> initValDeque;
+};
+
 
 //only used to construct VarDeclAST, not used after that
 class VarDefListAST: public BaseAST{

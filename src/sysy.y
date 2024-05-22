@@ -42,7 +42,7 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> ArrayIndexList ArrayIndex ArrayAccess FuncRParamList GlobalDefList GlobalDef FuncFParamList FuncFParam ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
+%type <ast_val> ConstInitValList ArrayIndexList ArrayIndex ArrayAccess FuncRParamList GlobalDefList GlobalDef FuncFParamList FuncFParam ExtendStmt MatchStmt OpenStmt VarDecl VarDefList InitVal VarDef FuncDef Block BlockItemList BlockItem Stmt Exp LOrExp LAndExp EqExp RelExp AddExp MulExp UnaryExp PrimaryExp Decl ConstExp ConstInitVal ConstDef ConstDefList ConstDecl
 %type <int_val> Number
 %type <str_val> UnaryOp Type LVal
 
@@ -354,16 +354,16 @@ ConstDef
         $$ = new ConstDefAST($1,$3);
     }
     | IDENT ArrayIndexList '=' ConstInitVal{
-
+		$$ = new ConstDefAST2($1, $2, $4);
     }
     ;
 
 ConstInitVal
     : ConstExp{
-        $$ = new ConstInitValAST1($1);
+        $$ = new ConstInitValAST($1);
     }
     |'{' '}' {
-        $$ = new ConstInitValAST2();
+        $$ = new ConstInitValAST2(nullptr);
     }
     | '{' ConstInitValList '}' {
         $$ = new ConstInitValAST2($2);
@@ -372,10 +372,10 @@ ConstInitVal
 
 ConstInitValList
 	: ConstInitVal {
-		$$ = ConstInitValListAST($1,nullptr);
+		$$ = new ConstInitValListAST($1,nullptr);
 	}
 	| ConstInitVal ',' ConstInitValList {
-		$$ = ConstInitValListAST($1,$3);
+		$$ = new ConstInitValListAST($1,$3);
 	}
     ;
 
@@ -396,17 +396,17 @@ VarDefList
 
 VarDef
     : IDENT {
-        $$ = new VarDefAST1($1);
+        $$ = new VarDefAST($1);
     }
     | IDENT '=' InitVal {
-        $$ = new VarDefAST1($1,$3);
+        $$ = new VarDefAST($1,$3);
     }
-    | IDENT ArrayIndexList {
-		$$ = new VarDefAST2($1,$2, nullptr);
-    }
-    | IDENT ArrayIndexList '=' InitVal {
-        $$ = new VarDefAST2($1,$2,$4);
-    }
+    //| IDENT ArrayIndexList {
+	//	$$ = new VarDefAST2($1,$2, nullptr);
+    //}
+    //| IDENT ArrayIndexList '=' InitVal {
+    //    $$ = new VarDefAST2($1,$2,$4);
+    //}
     ;
 
 InitVal

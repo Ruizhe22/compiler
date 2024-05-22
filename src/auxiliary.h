@@ -14,6 +14,17 @@
 #include <stack>
 #include <deque>
 
+class DimInfo{
+public:
+    DimInfo(int len, std::shared_ptr<DimInfo> nextDim);
+    DimInfo(int len);
+    int dimLength;
+    //int a[3] eleType is int
+    std::string elementType;
+    int elementSize;
+    std::string type;
+};
+
 class SymbolInfo{
 public:
     // 记录这个ident是定义的第几个名字
@@ -24,9 +35,7 @@ public:
     // for func
     SymbolInfo(std::string id, std::string typet);
     // for array
-    SymbolInfo(std::string id, std::string typet, const std::deque<int> &dimt);
-    std::deque<int> dim;
-
+    std::deque<std::shared_ptr<DimInfo>> dimList;
 
     std::string name;
     std::string type;

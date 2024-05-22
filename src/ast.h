@@ -25,6 +25,7 @@ public:
     bool isNum = false;
     bool isID = false;
     int num;
+    std::string type = "i32";
     std::unordered_map<std::string, std::shared_ptr<SymbolInfo>> symbolTable;
     // if n
     static std::shared_ptr<FunctionInfo> currentFunction;
@@ -230,6 +231,16 @@ public:
     void generateIR(std::ostream &os);
 };
 
+class StmtAST8: public BaseAST {
+public:
+    StmtAST8(BaseAST *ast1, BaseAST *ast2);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+private:
+    std::shared_ptr<BaseAST> arrayAccess;
+    std::shared_ptr<BaseAST> exp;
+};
+
 class BlockAST: public BaseAST {
 public:
     BlockAST(BaseAST *ast);
@@ -280,9 +291,34 @@ class ConstDefAST: public BaseAST{
 public:
     ConstDefAST(std::string *id, BaseAST *val);
     void spreadSymbolTable();
-    std::string type;
+
 private:
     std::shared_ptr<BaseAST> constInitVal;
+};
+
+class ConstDefAST2: public BaseAST{
+public:
+    ConstDefAST2(std::string *id, BaseAST *index, BaseAST *init);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+    static void generateInitIR(std::ostream &os, std::string arrayBase, std::deque<std::shared_ptr<BaseAST>> index, std::deque<std::shared_ptr<BaseAST>> &init);
+    std::shared_ptr<BaseAST> arrayIndexList;
+    std::shared_ptr<BaseAST> constInitVal;
+    std::deque<std::shared_ptr<BaseAST>> arrayIndexDeque;
+    std::deque<std::shared_ptr<BaseAST>> constInitValDeque;
+};
+
+class ConstInitValAST2: public BaseAST{
+public:
+    ConstInitValAST2(BaseAST *c);
+    void spreadSymbolTable();
+    std::deque<std::shared_ptr<BaseAST>> constInitValDeque;
+};
+
+class ConstInitValListAST: public BaseAST{
+public:
+    ConstInitValListAST(BaseAST *v , BaseAST *l);
+    std::deque<std::shared_ptr<BaseAST>> constInitValDeque;
 };
 
 class ConstDefListAST: public BaseAST{
@@ -292,9 +328,41 @@ public:
     std::deque<std::shared_ptr<BaseAST>> defList;
 };
 
+class ArrayIndexAST:public BaseAST{
+public:
+    ArrayIndexAST(BaseAST *e);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+    std::shared_ptr<DimInfo> dim;
+private:
+    std::shared_ptr<BaseAST> exp;
+};
+
+class ArrayIndexListAST:public BaseAST{
+public:
+    ArrayIndexListAST(BaseAST *a, BaseAST *l);
+    void spreadSymbolTable();
+    //arrayindexast deque
+    std::shared_ptr<BaseAST> arrayIndex;
+    std::shared_ptr<BaseAST> arrayIndexList;
+    std::shared_ptr<DimInfo> dim;
+    std::deque<std::shared_ptr<BaseAST>> arrayIndexDeque;
+};
+
+class ArrayAccessAST: public BaseAST{
+public:
+    ArrayAccessAST(std::string *id, BaseAST *a);
+    void generateIR(std::ostream &os);
+    void spreadSymbolTable();
+    std::string ident;
+    std::shared_ptr<BaseAST> arrayIndexList;
+};
+
+
 class ConstDeclAST: public BaseAST{
 public:
     ConstDeclAST(std::string *btype, BaseAST *list);
+    void generateIR(std::ostream &os);
     void spreadSymbolTable();
 private:
     std::string type;
@@ -490,6 +558,16 @@ public:
     void generateIR(std::ostream &os);
 private:
     std::string ident;
+};
+
+class PrimaryExpAST4: public BaseAST{
+public:
+    // although false and without explictly assign its name, no exp will invoke its name.
+    PrimaryExpAST4(BaseAST *a);
+    void spreadSymbolTable();
+    void generateIR(std::ostream &os);
+private:
+    std::shared_ptr<BaseAST> arrayAccess;
 };
 
 

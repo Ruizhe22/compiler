@@ -4,6 +4,15 @@
 
 #include "auxiliary.h"
 
+DimInfo::DimInfo(int len, std::shared_ptr<DimInfo> nextDim):dimLength(len){
+    elementType = nextDim->type;
+    type = "[" + elementType + ", " + std::to_string(dimLength) + "]";
+}
+
+DimInfo::DimInfo(int len):dimLength(len){
+    elementType = "i32";
+    type = "[" + elementType + ", " + std::to_string(dimLength) + "]";
+}
 
 SymbolInfo::SymbolInfo(std::string id, std::string typet, bool isConstt, int initNumt) : type(typet), isFunc(false), isNum(isConstt),
                                                                                           num(initNumt), ident(id) {

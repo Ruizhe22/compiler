@@ -323,6 +323,7 @@ void AsmGenerator::binaryHandler(const koopa_raw_value_t &value){
 
 void AsmGenerator::allocHandler(const koopa_raw_value_t &value)
 {
+    //std::cout << typeSize(value->ty->data.pointer.base) << std::endl;
     currentFunction->allocMem(value, typeSize(value->ty->data.pointer.base));
 }
 
@@ -345,6 +346,7 @@ void AsmGenerator::loadHandler(const koopa_raw_value_t &value)
         default:
             oss << generateLw(src, reg);
             oss << "\tlw " << reg << ", 0(" << reg << ")\n";
+            oss << generateSw(dst, reg);
     }
     currentFunction->restoreReg(reg);
 }

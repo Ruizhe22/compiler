@@ -130,7 +130,7 @@ public:
     void spreadSymbolTable();
     std::string type;
     std::string name;
-    BaseAST *arrayIndexList;
+    std::unique_ptr<BaseAST> arrayIndexList;
 };
 
 class ExtendStmtAST: public BaseAST {

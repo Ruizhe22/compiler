@@ -195,8 +195,8 @@ void FuncFParamAST2::spreadSymbolTable(){
     if(arrayIndexList) {
         arrayIndexList->symbolTable = symbolTable;
         arrayIndexList->spreadSymbolTable();
-        type = "*" + static_cast<ArrayIndexListAST *>(arrayIndexList)->dim->type;
-        symbolTable[name] = std::make_shared<SymbolInfo>(name, static_cast<ArrayIndexListAST *>(arrayIndexList)->dim, false, static_cast<ArrayIndexListAST *>(arrayIndexList)->arrayIndexDeque.size()+1);
+        type = "*" + static_cast<ArrayIndexListAST *>(arrayIndexList.get())->dim->type;
+        symbolTable[name] = std::make_shared<SymbolInfo>(name, static_cast<ArrayIndexListAST *>(arrayIndexList.get())->dim, false, static_cast<ArrayIndexListAST *>(arrayIndexList.release())->arrayIndexDeque.size()+1);
     }
     else {
         symbolTable[name] = std::make_shared<SymbolInfo>(name, std::shared_ptr<DimInfo>(nullptr), false, 1);

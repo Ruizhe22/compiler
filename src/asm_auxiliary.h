@@ -34,7 +34,7 @@ public:
     std::string allocReg();
     void restoreReg(const std::string &);
     // for some value which is not unit, alloc memory, update mapAllocMem and esp
-    int allocMem(const koopa_raw_value_t &);
+    int allocMem(const koopa_raw_value_t &, int size = 4);
     int paramIndex(koopa_raw_value_t v);
 
     int sp;

@@ -44,9 +44,12 @@ private:
     void jumpHandler(const koopa_raw_value_t &value);
     void globalAllocHandler(const koopa_raw_value_t &value);
     void callHandler(const koopa_raw_value_t &value);
-
+    void getElemPtrHandler(const koopa_raw_value_t &value);
+    void getPtrHandler(const koopa_raw_value_t &value);
     std::string generateLw(int src_offset, std::string dstReg, std::string base = "fp");
     std::string generateSw(int dst_offset, std::string srcReg, std::string base = "fp");
+    void generateAggregate(koopa_raw_value_t init);
+    static int typeSize(koopa_raw_type_t ty);
 };
 
 #endif //COMPILER_GENERATE_ASM_H

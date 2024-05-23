@@ -44,9 +44,9 @@ void Function::restoreReg(const std::string &reg)
 }
 
 //只分配，不查找已分配
-int Function::allocMem(const koopa_raw_value_t &value)
+int Function::allocMem(const koopa_raw_value_t &value, int size)
 {
-    sp-=4;
+    sp -= size;
     return (mapAllocMem[value] = sp);
 }
 

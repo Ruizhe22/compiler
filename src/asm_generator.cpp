@@ -146,6 +146,12 @@ void AsmGenerator::visitRawValue(const koopa_raw_value_t &value)
         case KOOPA_RVT_CALL:
             callHandler(value);
             break;
+        case KOOPA_RVT_GET_ELEM_PTR:
+            getElemPtrHandler(value);
+            break;
+        case KOOPA_RVT_GET_PTR:
+            getPtrHandler(value);
+            break;
         default:
             // 其他类型暂时遇不到
             assert(false);
@@ -317,7 +323,7 @@ void AsmGenerator::binaryHandler(const koopa_raw_value_t &value){
 
 void AsmGenerator::allocHandler(const koopa_raw_value_t &value)
 {
-    currentFunction->allocMem(value);
+    currentFunction->allocMem(value, typeSize(value->ty->data.pointer.base));
 }
 
 void AsmGenerator::loadHandler(const koopa_raw_value_t &value)
@@ -446,11 +452,32 @@ void AsmGenerator::globalAllocHandler(const koopa_raw_value_t &value)
         } else {
             ofs << "\t.word " << init->kind.data.integer.value << "\n\n";
         }
-    } else{
-        assert (init->kind.tag == KOOPA_RVT_AGGREGATE) ;
-        //initGlobalArray(init);
+    }
+    else if(pointerBase->tag == KOOPA_RTT_ARRAY){
+        if(init->kind.tag == KOOPA_RVT_ZERO_INIT){
+            ofs << "\t.zero " << typeSize(pointerBase) << "\n\n";
+        }
+        else if(init->kind.tag == KOOPA_RVT_AGGREGATE){
+            // KOOPA_RVT_AGGREGATE
+            generateAggregate(init);
+            ofs << "\n";
+        }
     }
 }
+
+void AsmGenerator::generateAggregate(koopa_raw_value_t init)
+{
+    if(init->kind.tag == KOOPA_RVT_INTEGER){
+        ofs << "\t.word " << init->kind.data.integer.value << "\n";
+    }
+    else {
+        koopa_raw_slice_t elems = init->kind.data.aggregate.elems;
+        for (int i = 0; i < elems.len; ++i) {
+            generateAggregate(reinterpret_cast<koopa_raw_value_t>(elems.buffer[i]));
+        }
+    }
+}
+
 
 void AsmGenerator::callHandler(const koopa_raw_value_t &value)
 {
@@ -502,7 +529,81 @@ void AsmGenerator::callHandler(const koopa_raw_value_t &value)
 
 }
 
+void AsmGenerator::getElemPtrHandler(const koopa_raw_value_t &value)
+{
+    int dst = currentFunction->allocMem(value);
+    koopa_raw_value_t src = value->kind.data.get_elem_ptr.src;
+    koopa_raw_value_t index = value->kind.data.get_elem_ptr.index;
+    std::string srcReg = currentFunction->allocReg();
+    std::string offReg = currentFunction->allocReg();
+    int elementShift = typeSize(src->ty->data.pointer.base->data.array.base);
+    // process index
+    if(index->kind.tag == KOOPA_RVT_INTEGER){
+        int offset = elementShift * index->kind.data.integer.value;
+        oss << "\tli " << offReg << ", " << offset << "\n";
+    } else {
+        // index
+        oss << generateLw(currentFunction->mapAllocMem[index],offReg);
+        std::string tempReg = currentFunction->allocReg();
+        oss << "\tli " << tempReg << ", " << elementShift << "\n";
+        oss << "\tmul " << offReg << ", " << offReg << ", " << tempReg << "\n";
+        currentFunction->restoreReg(tempReg);
+    }
+    // process src base
+    if(src->kind.tag == KOOPA_RVT_GLOBAL_ALLOC){
+        oss << "\tla " << srcReg << ", " << src->name + 1 << "\n";
+    }
+    else if(src->kind.tag == KOOPA_RVT_ALLOC){
+        oss << "\tli " << srcReg << ", " << currentFunction->mapAllocMem[src] << "\n";
+        oss << "\tadd " << srcReg << ", " << srcReg << ", " << "fp" << "\n";
+    }
+    else {
+        oss << generateLw(currentFunction->mapAllocMem[src],srcReg);
+    }
+    // store
+    oss << "\tadd " << srcReg << ", " << srcReg << ", " << offReg << "\n";
+    oss << generateSw(dst, srcReg);
+    currentFunction->restoreReg(offReg);
+    currentFunction->restoreReg(srcReg);
+}
 
+void AsmGenerator::getPtrHandler(const koopa_raw_value_t &value)
+{
+    int dst = currentFunction->allocMem(value);
+    koopa_raw_value_t src = value->kind.data.get_ptr.src;
+    koopa_raw_value_t index = value->kind.data.get_ptr.index;
+    std::string srcReg = currentFunction->allocReg();
+    std::string offReg = currentFunction->allocReg();
+    int elementShift = typeSize(src->ty->data.pointer.base);
+    // process index
+    if(index->kind.tag == KOOPA_RVT_INTEGER){
+        int offset = elementShift * index->kind.data.integer.value;
+        oss << "\tli " << offReg << ", " << offset << "\n";
+    } else {
+        // index
+        oss << generateLw(currentFunction->mapAllocMem[index],offReg);
+        std::string tempReg = currentFunction->allocReg();
+        oss << "\tli " << tempReg << ", " << elementShift << "\n";
+        oss << "\tmul " << offReg << ", " << offReg << ", " << tempReg << "\n";
+        currentFunction->restoreReg(tempReg);
+    }
+    // process src base
+    if(src->kind.tag == KOOPA_RVT_GLOBAL_ALLOC){
+        oss << "\tla " << srcReg << ", " << src->name + 1 << "\n";
+    }
+    else if(src->kind.tag == KOOPA_RVT_ALLOC){
+        oss << "\tli " << srcReg << ", " << currentFunction->mapAllocMem[src] << "\n";
+        oss << "\tadd " << srcReg << ", " << srcReg << ", " << "fp" << "\n";
+    }
+    else {
+        oss << generateLw(currentFunction->mapAllocMem[src],srcReg);
+    }
+    // store
+    oss << "\tadd " << srcReg << ", " << srcReg << ", " << offReg << "\n";
+    oss << generateSw(dst, srcReg);
+    currentFunction->restoreReg(offReg);
+    currentFunction->restoreReg(srcReg);
+}
 
 std::string AsmGenerator::generateLw(int src_offset, std::string dstReg, std::string base)
 {
@@ -536,4 +637,20 @@ std::string AsmGenerator::generateSw(int dst_offset, std::string srcReg, std::st
     return inst;
 }
 
+int AsmGenerator::typeSize(koopa_raw_type_t ty){
+    switch(ty->tag){
+        case KOOPA_RTT_INT32:
+            return 4;
+        case KOOPA_RTT_UNIT:
+            return 0;
+        case KOOPA_RTT_ARRAY:
+            return ty->data.array.len * typeSize(ty->data.array.base);
+        case KOOPA_RTT_POINTER:
+            return 4;
+        case KOOPA_RTT_FUNCTION:
+            return 0;
+        default:
+            return 0;
+    }
+}
 
